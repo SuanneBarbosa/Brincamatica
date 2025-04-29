@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/saved_row_models.dart';
-import 'icon_service.dart'; // To access IconModel
-import 'character_service.dart'; // To access current icon size
+import 'icon_service.dart'; 
+
 
 class SavedRowService extends ChangeNotifier {
   static const _savedRowsKey = 'saved_rows';
@@ -12,10 +12,9 @@ class SavedRowService extends ChangeNotifier {
   List<SavedRow> get savedRows => _savedRows;
 
   SavedRowService() {
-    loadSavedRows(); // Load rows when service is initialized
+    loadSavedRows(); 
   }
 
-  // Load rows from SharedPreferences
   Future<void> loadSavedRows() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -25,19 +24,19 @@ class SavedRowService extends ChangeNotifier {
         _savedRows = decodedList
             .map((item) => SavedRow.fromJson(item as Map<String, dynamic>))
             .toList();
-         debugPrint("Loaded ${_savedRows.length} saved rows.");
+      
       } else {
         _savedRows = [];
          debugPrint("No saved rows found or key is empty.");
       }
     } catch (e) {
-      _savedRows = []; // Reset on error
+      _savedRows = []; 
       debugPrint("Error loading saved rows: $e");
     }
     notifyListeners();
   }
 
-  // Save the current list of rows back to SharedPreferences
+
   Future<void> _persistRows() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -49,55 +48,64 @@ class SavedRowService extends ChangeNotifier {
     }
   }
 
-  // Save a specific row from the IconController
+ 
   Future<void> saveRow(int rowIndex, List<IconModel> iconsInRow, String name) async {
-    if (iconsInRow.isEmpty) {
-      debugPrint("Attempted to save an empty row ($rowIndex). Aborting.");
-      return; // Don't save empty rows
-    }
-
-    final String newId = 'row_${rowIndex}_${DateTime.now().millisecondsSinceEpoch}';
-    final List<SavedIconData> savedIcons = iconsInRow.map((icon) =>
-      SavedIconData(type: icon.type, colIndex: icon.colIndex)
-    ).toList();
-
-    // Ensure unique column indices (safety check, should already be unique)
-    final uniqueColIndices = <int>{};
-    savedIcons.retainWhere((icon) => uniqueColIndices.add(icon.colIndex));
-
-
-    final newSavedRow = SavedRow(
-      id: newId,
-      name: name.isNotEmpty ? name : 'Linha ${rowIndex + 1} - ${DateTime.now().toIso8601String().substring(0, 16)}', // Default name
-      originalRowIndex: rowIndex,
-      icons: savedIcons,
-    );
-
-    _savedRows.add(newSavedRow);
-    await _persistRows();
-    notifyListeners();
-    debugPrint("Saved row '$name' (ID: $newId) from index $rowIndex with ${savedIcons.length} icons.");
+  if (iconsInRow.isEmpty) {
+    debugPrint("Attempted to save an empty row ($rowIndex). Aborting.");
+    return; // Don't save empty rows
   }
 
-  // Delete a saved row by its ID
+  final String newId = 'row_${rowIndex}_${DateTime.now().millisecondsSinceEpoch}';
+  final List<SavedIconData> savedIcons = iconsInRow.map((icon) =>
+    SavedIconData(type: icon.type, colIndex: icon.colIndex)
+  ).toList();
+
+  // Ensure unique column indices (safety check, should already be unique)
+  final uniqueColIndices = <int>{};
+  savedIcons.retainWhere((icon) => uniqueColIndices.add(icon.colIndex));
+
+  // --->>> AJUSTE AQUI na definição do nome padrão <<<---
+  // Pega a data atual uma vez para eficiência
+  final now = DateTime.now();
+  // Formata dia e mês com zero à esquerda se necessário
+  final String formattedDay = now.day.toString().padLeft(2, '0');
+  final String formattedMonth = now.month.toString().padLeft(2, '0');
+  final String formattedYear = now.year.toString();
+
+  // Cria o nome padrão no formato DD/MM/AAAA
+  final String defaultBrazilianDateName = 'Linha ${rowIndex + 1} - $formattedDay/$formattedMonth/$formattedYear';
+
+  final newSavedRow = SavedRow(
+    id: newId,
+    // Usa o nome fornecido se não estiver vazio, senão usa o nome padrão com data brasileira
+    name: name.isNotEmpty ? name : defaultBrazilianDateName,
+    originalRowIndex: rowIndex,
+    icons: savedIcons,
+  );
+
+  _savedRows.add(newSavedRow);
+  await _persistRows();
+  notifyListeners();
+  // O debugPrint usará o nome final (fornecido ou padrão)
+  debugPrint("Saved row '${newSavedRow.name}' (ID: $newId) from index $rowIndex with ${savedIcons.length} icons.");
+}
+
+  
   Future<void> deleteRow(String id) async {
     final initialLength = _savedRows.length;
     _savedRows.removeWhere((row) => row.id == id);
     if (_savedRows.length < initialLength) {
        await _persistRows();
        notifyListeners();
-       debugPrint("Deleted row with ID: $id");
-    } else {
-       debugPrint("Row with ID: $id not found for deletion.");
-    }
+    } 
   }
 
-  // Get a specific saved row by ID (needed for applying)
+  
   SavedRow? getSavedRowById(String id) {
       try {
           return _savedRows.firstWhere((row) => row.id == id);
       } catch (e) {
-          return null; // Not found
+          return null; 
       }
   }
 }

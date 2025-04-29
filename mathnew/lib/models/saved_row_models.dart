@@ -1,6 +1,3 @@
-import 'package:flutter/foundation.dart';
-
-// Represents a single icon within a saved row
 class SavedIconData {
   final String type;
   final int colIndex;
@@ -10,7 +7,7 @@ class SavedIconData {
     required this.colIndex,
   });
 
-  // For JSON serialization/deserialization
+  
   Map<String, dynamic> toJson() => {
         'type': type,
         'colIndex': colIndex,
@@ -22,11 +19,10 @@ class SavedIconData {
       );
 }
 
-// Represents a complete saved row
 class SavedRow {
-  final String id; // Unique identifier (e.g., timestamp)
-  final String name; // User-defined name
-  final int originalRowIndex; // Which row it was saved from (0, 1, or 2)
+  final String id; 
+  final String name; 
+  final int originalRowIndex; 
   final List<SavedIconData> icons;
 
   SavedRow({
@@ -36,7 +32,7 @@ class SavedRow {
     required this.icons,
   });
 
-   // For JSON serialization/deserialization
+  
    Map<String, dynamic> toJson() => {
          'id': id,
          'name': name,
@@ -46,7 +42,7 @@ class SavedRow {
 
    factory SavedRow.fromJson(Map<String, dynamic> json) => SavedRow(
          id: json['id'] as String,
-         name: json['name'] as String? ?? 'Linha Salva', // Default name if missing
+         name: json['name'] as String? ?? 'Linha Salva', 
          originalRowIndex: json['originalRowIndex'] as int,
          icons: (json['icons'] as List<dynamic>)
              .map((iconJson) => SavedIconData.fromJson(iconJson as Map<String, dynamic>))

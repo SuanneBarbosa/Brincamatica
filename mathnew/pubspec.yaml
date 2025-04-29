@@ -26,6 +26,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+
     - assets/images/characters/character_boy_dark.png
     - assets/images/characters/character_boy_light.png
     - assets/images/characters/character_girl_dark.png
@@ -40,14 +41,11 @@ flutter:
     - assets/images/CNPQ_Logo.png
     - assets/images/RUMO_Logo.png
 
-    - assets/sounds/baixo.mp3
-    - assets/sounds/cima.mp3
-    - assets/sounds/direita.mp3
-    - assets/sounds/esquerda.mp3
-    - assets/sounds/baterPalma.mp3 
+    
     - assets/sounds/assobiar.mp3
+    - assets/sounds/baterPes.mp3
+    - assets/sounds/baterPalma.mp3 
     - assets/sounds/estalarDedos.mp3
-    - assets/sounds/baterPes.mp3 
     - assets/sounds/baterPeito.mp3
     - assets/sounds/baterPerna.mp3 
    

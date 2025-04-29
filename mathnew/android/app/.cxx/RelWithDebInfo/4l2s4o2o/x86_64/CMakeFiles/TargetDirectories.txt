@@ -1,0 +1,2 @@
+C:/Users/suann/projetos-flutter/mathnew_app/mathnew/android/app/.cxx/RelWithDebInfo/4l2s4o2o/x86_64/CMakeFiles/edit_cache.dir
+C:/Users/suann/projetos-flutter/mathnew_app/mathnew/android/app/.cxx/RelWithDebInfo/4l2s4o2o/x86_64/CMakeFiles/rebuild_cache.dir

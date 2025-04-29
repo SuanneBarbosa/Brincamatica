@@ -1,81 +1,101 @@
 import 'package:flutter/material.dart';
 
 class InstructionsScreen extends StatelessWidget {
-  const InstructionsScreen({Key? key}) : super(key: key);
+  const InstructionsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Instruções de Uso"),
-        
+        backgroundColor: Colors.blue, 
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20), 
+        iconTheme: const IconThemeData(color: Colors.white), 
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
         child: ListView(
           children: [
            _buildInstructionItem(
-              title: 'Movimentando o Personagem',
+              title: 'Movimentando o beija-flor',
               description:
-                  'Arraste o personagem pela tela para movimentá-lo. Utilize o joystick na parte inferior da tela para mover o personagem nas quatro direções: cima, baixo, esquerda e direita. O joystick pode ser desativado no menu lateral.',
+                 
+                  'Para mover o beija-flor, basta arrastá-lo pela tela na direção desejada (cima, baixo, esquerda ou direita).',
               semanticsDescription:
-                  'Arraste para mover ou use o joystick.',
+                
+                  'Arraste o beija-flor na tela para movê-lo.',
             ),
            _buildInstructionItem(
-              title: 'Adicionando ícone',
+              title: 'Adicionando Ícones',
               description:
-                  'Toque nos botões correspondentes aos tipos de ícones para adicioná-los à tela.',
+                 
+                  'Toque nos botões de ação, localizados na barra inferior, para adicionar os ícones correspondentes na posição atual do beija-flor.',
               semanticsDescription:
-                  'Toque nos botões para adicionar ícones.',
+                  
+                  'Adicione ícones tocando nos botões de ação na parte inferior da tela.',
             ),
-                       _buildInstructionItem(
-              title: 'Removendo ícone',
+           _buildInstructionItem(
+              title: 'Removendo um Ícone', 
               description:
-                  'Toque em um ícone na tela para removê-lo. Uma caixa de diálogo de confirmação será exibida.',
-              semanticsDescription: 'Toque no ícone para removê-lo.',
+                 
+                  'Para remover um ícone específico, toque sobre ele na tela. Uma caixa de diálogo de confirmação será exibida antes da remoção.',
+              semanticsDescription:
+                
+                  'Toque sobre um ícone para removê-lo.',
             ),
             _buildInstructionItem(
               title: 'Limpando a Tela',
               description:
-                  'Abra o menu lateral (ícone de menu no canto superior esquerdo) e toque em "Limpar Tela" para remover todos os ícones da tela.',
-              semanticsDescription: 'Use a opção "Limpar Tela" no menu lateral',
-            ),
 
-           _buildInstructionItem(
-              title: 'Ajustando o Tamanho do ícone',
-              description:
-                  'Abra o menu lateral (ícone de menu no canto superior esquerdo) e utilize o controle deslizante "Tamanho do ícone" para ajustar o tamanho dos ícones.',
+                  'Abra o menu lateral (ícone no canto superior esquerdo) e toque na opção "Limpar Tela" para remover todos os ícones da grade.',
               semanticsDescription:
-                  'Use o controle deslizante Tamanho do ícone no menu lateral.',
+                    
+                  'Use "Limpar Tela" no menu lateral para apagar todos os ícones.',
             ),
            _buildInstructionItem(
-              title: 'Criando Histórias',
+              title: 'Ajustando o Tamanho dos Ícones',  
               description:
-                  'Abra o menu lateral  e toque em "Criar História". Selecione as ações (movimentos e ícones) e o número de repetições para cada conjunto de ações. Toque em "Fazer História" para executar a sequência. Utilize o botão "Novo" para adicionar um novo conjunto de ações e repetições e o botão "Excluir" para remover um conjunto específico.  Ative a narração para que cada ação executada durante a história seja narrada.',
+                  
+                  'No menu lateral, utilize o controle deslizante "Tamanho do Ícone" para definir o tamanho dos próximos ícones a serem adicionados. Atenção: alterar o tamanho também removerá todos os ícones atuais da tela.',
               semanticsDescription:
-                  'Use a opção "Criar História" no menu lateral.',
-            ),
-            _buildInstructionItem(
-              title: 'Velocidade da Narração',
-              description:
-                  'Abra o menu lateral  e ajuste a velocidade da narração da história no menu lateral utilizando o controle deslizante "Velocidade da Narração".',
-              semanticsDescription:
-                  'Use o controle deslizante "Velocidade da Narração" no menu lateral .',
+                  
+                  'Ajuste o tamanho dos ícones usando o controle no menu lateral. Isso limpará a tela.',
             ),
              _buildInstructionItem(
-              title: 'Contador de ícones',
+              title: 'Contador de Ícones',
               description:
-                  'Abra o menu lateral  e toque em "Contador de ícones" para exibir a quantidade de ícones na tela.',
+                  
+                  'Acesse o menu lateral e toque em "Contador de Ícones" para visualizar rapidamente a quantidade total de ícones presentes na tela.',
               semanticsDescription:
-                  'Use a opção "Contador de ícones" no menu lateral.',
+                  
+                  'Verifique a quantidade de ícones na tela usando "Contador de Ícones" no menu.',
             ),
-            
+              _buildInstructionItem(
+              title: 'Salvar Linha Atual',
+              description:
+                  
+                  'No menu lateral, toque em "Salvar Linha Atual". Isso permitirá salvar a sequência de ícones da linha onde o beija-flor está posicionado. Você precisará digitar um nome para a linha e confirmar para salvá-la.',
+              semanticsDescription:
+                  
+                  'Salve a sequência da linha atual do beija-flor através da opção no menu lateral.',
+            ),
+             _buildInstructionItem(
+              title: 'Gerenciar Linhas Salvas', 
+              description:
+                  
+                  'Abra o menu lateral e toque em "Linhas Salvas" para ver suas sequências guardadas. Para usar (aplicar) uma linha salva, toque no ícone verde ao lado dela e escolha em qual linha da tela principal (1, 2 ou 3) deseja inseri-la. Para apagar permanentemente uma linha salva, toque no ícone vermelho de lixeira.',
+              semanticsDescription:
+                  
+                  'Visualize, aplique ou exclua sequências de ícones salvas na opção "Linhas Salvas" do menu.',
+            ),
+
           ],
         ),
       ),
     );
   }
 
+    
   Widget _buildInstructionItem(
       {required String title,
       required String description,
@@ -83,30 +103,38 @@ class InstructionsScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+          
         Semantics(
-          label: title,
-          header: false,
+          label: title,   
+          header: true,   
           child: Text(
             title,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
-              color: Colors.blueAccent,
+              color: Colors.blueAccent, 
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 8),  
+          
         Semantics(
-          label: semanticsDescription,
+          label: semanticsDescription,  
           child: Text(
             description,
-            textAlign: TextAlign.justify,
-            style: const TextStyle(fontSize: 16, color: Colors.black87),
+            textAlign: TextAlign.justify,   
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black87,  
+              height: 1.3,  
+            ),
           ),
         ),
+          
         const Divider(
-          thickness: 1,
-          height: 20,
+          thickness: 1, 
+          height: 30,   
+          color: Colors.black12,  
         ),
       ],
     );

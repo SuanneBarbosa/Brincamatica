@@ -25,12 +25,12 @@ class IconModel {
   bool isPartiallyOffscreen(
       double screenWidth, double screenHeight, BuildContext context) {
     return false;
-  } 
+  }
 
   List<String> getOffscreenEdges(
       double screenWidth, double screenHeight, BuildContext context) {
-     return [];
-  } 
+    return [];
+  }
 }
 
 class IconController extends ChangeNotifier {
@@ -38,7 +38,7 @@ class IconController extends ChangeNotifier {
     0: [],
     1: [],
     2: [],
-  }; 
+  };
   final int _maxCols = 10;
   double _rowHeight = 0;
   double _colWidth = 0;
@@ -53,37 +53,64 @@ class IconController extends ChangeNotifier {
     required double rowHeight,
     required double colWidth,
   }) {
+    bool layoutChanged = _horizontalPadding != horizontalPadding ||
+        _verticalPadding != verticalPadding ||
+        _rowHeight != rowHeight ||
+        _colWidth != colWidth;
+
     _horizontalPadding = horizontalPadding;
     _verticalPadding = verticalPadding;
     _rowHeight = rowHeight;
     _colWidth = colWidth;
+
+    if (layoutChanged) {
+    
+      for (int rowIndex in _rowIcons.keys) {
+        List<IconModel> updatedIcons = [];
+        for (IconModel oldIcon in _rowIcons[rowIndex]!) {
+          final double newX =
+              _horizontalPadding + (oldIcon.colIndex * _colWidth);
+          final double newY = _verticalPadding +
+              (oldIcon.rowIndex * _rowHeight) +
+              (_rowHeight / 2) -
+              (oldIcon.size / 2);
+          final Offset newPosition = Offset(newX, newY);
+
+          updatedIcons.add(IconModel(
+            position: newPosition,
+            type: oldIcon.type,
+            semanticsLabel: oldIcon.semanticsLabel,
+            size: oldIcon.size,
+            rowIndex: oldIcon.rowIndex,
+            colIndex: oldIcon.colIndex,
+          ));
+        }
+        _rowIcons[rowIndex] = updatedIcons;
+      }
+      notifyListeners();
+    }
   }
 
-  
   List<IconModel> get allIcons =>
       _rowIcons.values.expand((list) => list).toList();
   List<IconModel> getIconsForRow(int rowIndex) => _rowIcons[rowIndex] ?? [];
   int getNextColumnIndex(int rowIndex) => _rowIcons[rowIndex]?.length ?? 0;
   bool isRowFull(int rowIndex) => getNextColumnIndex(rowIndex) >= _maxCols;
 
-
-
   IconModel? getIconAt(int rowIndex, int colIndex) {
-    
     if (!_rowIcons.containsKey(rowIndex)) {
       return null;
     }
-   
+
     for (final icon in _rowIcons[rowIndex]!) {
       if (icon.colIndex == colIndex) {
         return icon;
       }
     }
-    
+
     return null;
   }
 
-  
   void replaceIconAt({
     required int rowIndex,
     required int colIndex,
@@ -91,40 +118,38 @@ class IconController extends ChangeNotifier {
     required String newSemanticsLabel,
     required double newSize,
   }) {
-     if (!_rowIcons.containsKey(rowIndex)) {
-       debugPrint("Erro: Tentativa de substituir ícone em linha inexistente: $rowIndex");
-       return;
-     }
+    if (!_rowIcons.containsKey(rowIndex)) {
+      return;
+    }
 
+    final list = _rowIcons[rowIndex]!;
+    final indexToReplace = list.indexWhere((icon) => icon.colIndex == colIndex);
+
+    if (indexToReplace == -1) {
      
-     final list = _rowIcons[rowIndex]!;
-     final indexToReplace = list.indexWhere((icon) => icon.colIndex == colIndex);
+      return;
+    }
 
-     if (indexToReplace == -1) {
-       debugPrint("Erro: Ícone não encontrado em ($rowIndex, $colIndex) para substituição.");
-       return;
-     }
+    final double x = _horizontalPadding + (colIndex * _colWidth);
+    final double y = _verticalPadding +
+        (rowIndex * _rowHeight) +
+        (_rowHeight / 2) -
+        (newSize / 2);
+    final Offset newPosition = Offset(x, y);
 
-     
-     final double x = _horizontalPadding + (colIndex * _colWidth);
-     final double y = _verticalPadding + (rowIndex * _rowHeight) + (_rowHeight / 2) - (newSize / 2);
-     final Offset newPosition = Offset(x, y);
+    final newIcon = IconModel(
+      position: newPosition,
+      type: newType,
+      semanticsLabel: newSemanticsLabel,
+      size: newSize,
+      rowIndex: rowIndex,
+      colIndex: colIndex,
+    );
 
-     
-     final newIcon = IconModel(
-       position: newPosition,
-       type: newType,
-       semanticsLabel: newSemanticsLabel,
-       size: newSize,
-       rowIndex: rowIndex,
-       colIndex: colIndex,
-     );
+    list[indexToReplace] = newIcon;
 
-     
-     list[indexToReplace] = newIcon;
-
-     debugPrint("Replaced icon at Row $rowIndex, Col $colIndex with '$newType'. Position: $newPosition, Size: $newSize");
-     notifyListeners(); 
+   
+    notifyListeners();
   }
 
   void addIcon({
@@ -136,21 +161,22 @@ class IconController extends ChangeNotifier {
   }) {
     const validTypes = [
       "Assobiar",
-      "BaterPalma",
       "BaterPe",
+      "BaterPalma",
       "EstalarDedo",
       "BaterPerna",
       "BaterPeito"
     ];
     if (!validTypes.contains(type)) throw ArgumentError("Tipo inválido: $type");
-     if (isRowFull(rowIndex)) {
-       debugPrint("Row $rowIndex full. Cannot add sequentially."); 
-      
-       return;
-     }
+    if (isRowFull(rowIndex)) {
+      return;
+    }
 
-    final double x = _horizontalPadding + (colIndex * _colWidth); 
-    final double y = _verticalPadding + (rowIndex * _rowHeight) + (_rowHeight / 2) - (size / 2);
+    final double x = _horizontalPadding + (colIndex * _colWidth);
+    final double y = _verticalPadding +
+        (rowIndex * _rowHeight) +
+        (_rowHeight / 2) -
+        (size / 2);
     final Offset position = Offset(x, y);
 
     final newIcon = IconModel(
@@ -159,13 +185,13 @@ class IconController extends ChangeNotifier {
       semanticsLabel: semanticsLabel,
       size: size,
       rowIndex: rowIndex,
-      colIndex: colIndex, 
+      colIndex: colIndex,
     );
 
     _rowIcons.putIfAbsent(rowIndex, () => []);
-    _rowIcons[rowIndex]?.add(newIcon); 
+    _rowIcons[rowIndex]?.add(newIcon);
 
-    debugPrint("Added icon SEQUENTIALLY '$type' at Row $rowIndex, Col $colIndex. Position: $position, Size: $size");
+   
     notifyListeners();
   }
 
@@ -175,7 +201,7 @@ class IconController extends ChangeNotifier {
     removed = true;
 
     if (removed) {
-      debugPrint("Removed icon '${icon.type}' from row ${icon.rowIndex}");
+     
       notifyListeners();
     }
   }
@@ -184,62 +210,60 @@ class IconController extends ChangeNotifier {
     for (final list in _rowIcons.values) {
       list.clear();
     }
-    debugPrint("All icons cleared.");
+  
     notifyListeners();
   }
 
   void checkAllIconsOffscreen(
       BuildContext context, double screenWidth, double screenHeight) {}
 
-       void clearRow(int rowIndex) {
+  void clearRow(int rowIndex) {
     if (_rowIcons.containsKey(rowIndex)) {
-      final int count = _rowIcons[rowIndex]!.length;
       _rowIcons[rowIndex]!.clear();
-      debugPrint("Cleared $count icons from row $rowIndex.");
+    
       notifyListeners();
-    } else {
-       debugPrint("Attempted to clear non-existent row $rowIndex.");
-    }
+    } 
   }
-  // Helper to get a simple label from type (you might already have this logic elsewhere)
- String _getSemanticsLabelFromType(String type) {
-    // Add more cases as needed or use a map lookup
+
+  String _getSemanticsLabelFromType(String type) {
     switch (type) {
-      case "Assobiar": return "Assobiar";
-      case "BaterPalma": return "Bater Palma";
-      case "BaterPe": return "Bater Pé";
-      case "EstalarDedo": return "Estalar Dedo";
-      case "BaterPerna": return "Bater Perna";
-      case "BaterPeito": return "Bater Peito";
-      default: return type; // Fallback
+      case "BaterPe":
+        return "Bater Pe";
+      case "Assobiar":
+        return "Assobiar";
+      case "BaterPalma":
+        return "Bater Palma";
+      case "EstalarDedo":
+        return "Estalar Dedo";
+      case "BaterPerna":
+        return "Bater Perna";
+      case "BaterPeito":
+        return "Bater Peito";
+      default:
+        return type;
     }
   }
 
-  // Method to apply a saved row's icons
-  void applySavedRow(int targetRowIndex, List<SavedIconData> savedIcons, double currentIconSize) {
+  void applySavedRow(int targetRowIndex, List<SavedIconData> savedIcons,
+      double currentIconSize) {
     if (targetRowIndex < 0 || targetRowIndex >= _rowIcons.length) {
-       debugPrint("Error: Invalid target row index $targetRowIndex for applying saved row.");
-       return;
+     
+      return;
     }
 
-    // 1. Clear the target row first
     clearRow(targetRowIndex);
 
-    // 2. Add icons from the saved data
     for (final savedIcon in savedIcons) {
-       if (savedIcon.colIndex >= 0 && savedIcon.colIndex < _maxCols) {
-          // Use the existing addIcon logic, ensuring it places at the correct colIndex
-          addIcon(
-             rowIndex: targetRowIndex,
-             colIndex: savedIcon.colIndex, // Use the saved column index
-             type: savedIcon.type,
-             semanticsLabel: _getSemanticsLabelFromType(savedIcon.type), // Regenerate label
-             size: currentIconSize, // Use the current global size setting
-          );
-       } else {
-           debugPrint("Skipping saved icon '${savedIcon.type}' at invalid column index ${savedIcon.colIndex}");
-       }
+      if (savedIcon.colIndex >= 0 && savedIcon.colIndex < _maxCols) {
+        addIcon(
+          rowIndex: targetRowIndex,
+          colIndex: savedIcon.colIndex,
+          type: savedIcon.type,
+          semanticsLabel: _getSemanticsLabelFromType(savedIcon.type),
+          size: currentIconSize,
+        );
+      } 
     }
-     debugPrint("Applied ${savedIcons.length} icons to row $targetRowIndex.");
-     // notifyListeners() is called within addIcon
-}}
+    
+  }
+}

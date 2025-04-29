@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ThankYouScreen extends StatelessWidget {
-  const ThankYouScreen({Key? key}) : super(key: key);
+  const ThankYouScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +23,7 @@ class ThankYouScreen extends StatelessWidget {
               child: Scrollbar(
                 thumbVisibility: true,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20.0),
+                  padding: EdgeInsets.all(20.0),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
