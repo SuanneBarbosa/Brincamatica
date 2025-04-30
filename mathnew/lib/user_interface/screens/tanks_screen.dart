@@ -8,6 +8,9 @@ class ThankYouScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Agradecimentos"),
+        backgroundColor: Colors.blue, 
+         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20), 
+        iconTheme: const IconThemeData(color: Colors.white), 
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
