@@ -175,7 +175,7 @@ class SavedRowsScreen extends StatelessWidget {
           actions: <Widget>[
             // Botão Cancelar (Semantics já estava ok)
              Semantics(
-              label: 'Cancelar aplicação', // Label mais específico
+              label: 'Cancelar aplicação de linha', // Label mais específico
               button: true,
               child: ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(null),
@@ -261,7 +261,7 @@ class SavedRowsScreen extends StatelessWidget {
                                  scrollDirection: Axis.horizontal,
                                  child: Semantics(
                                    label: "Visualização dos ícones da linha salva. $iconSemantics", 
-                                   image: true, 
+                                   image: false, 
                                    child: ExcludeSemantics(
                                      child: Row(
                                        children: savedRow.icons.map((iconData) {
@@ -296,7 +296,7 @@ class SavedRowsScreen extends StatelessWidget {
                             Tooltip( // Tooltip fornece a descrição padrão
                               message: 'Aplicar esta linha na tela principal',
                               child: Semantics( // Semantics explícito
-                                label: 'Aplicar linha ${savedRow.name}', // Label mais específico
+                                label: 'Aplicar esta linha', // Label mais específico
                                 button: true,
                                 child: IconButton(
                                   icon: const Icon(Icons.playlist_add_check, color: Colors.green, semanticLabel: "Aplicar Linha"), // semanticLabel no Icon
@@ -306,7 +306,7 @@ class SavedRowsScreen extends StatelessWidget {
                                        final double currentIconSize = characterController.currentIconSizeSetting;
                                        iconController.applySavedRow(targetRow, savedRow.icons, currentIconSize);
                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('Linha "${savedRow.name}" aplicada na Linha ${targetRow + 1}.'), duration: const Duration(seconds: 2)),
+                                          SnackBar(content: Text('O conjunto "${savedRow.name}" foi aplicado na Linha ${targetRow + 1}.'), duration: const Duration(seconds: 2)),
                                        );
                                        // Tenta fechar a tela atual após aplicar
                                        if (Navigator.canPop(context)) {
@@ -323,7 +323,7 @@ class SavedRowsScreen extends StatelessWidget {
                             Tooltip( // Tooltip fornece a descrição padrão
                               message: 'Excluir esta linha salva',
                               child: Semantics( // Semantics explícito
-                                label: 'Excluir linha ${savedRow.name}', // Label mais específico
+                                label: 'Excluir esta linha', // Label mais específico
                                 button: true,
                                 child: IconButton(
                                   icon: const Icon(Icons.delete_outline, color: Colors.redAccent, semanticLabel: "Excluir Linha"), // semanticLabel no Icon
@@ -332,7 +332,7 @@ class SavedRowsScreen extends StatelessWidget {
                                      if (confirmed == true && context.mounted) { // Verifica context.mounted
                                         await savedRowService.deleteRow(savedRow.id);
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('Linha "${savedRow.name}" excluída.'), duration: const Duration(seconds: 2)),
+                                          SnackBar(content: Text('O conjunto "${savedRow.name}" foi excluído.'), duration: const Duration(seconds: 2)),
                                         );
                                      }
                                   },

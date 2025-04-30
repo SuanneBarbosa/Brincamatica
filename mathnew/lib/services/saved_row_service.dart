@@ -64,21 +64,26 @@ class SavedRowService extends ChangeNotifier {
   final uniqueColIndices = <int>{};
   savedIcons.retainWhere((icon) => uniqueColIndices.add(icon.colIndex));
 
-  // --->>> AJUSTE AQUI na definição do nome padrão <<<---
-  // Pega a data atual uma vez para eficiência
-  final now = DateTime.now();
-  // Formata dia e mês com zero à esquerda se necessário
-  final String formattedDay = now.day.toString().padLeft(2, '0');
-  final String formattedMonth = now.month.toString().padLeft(2, '0');
-  final String formattedYear = now.year.toString();
+  // --- Lógica do Nome Padrão Simplificada ---
+  String defaultName;
+  if (name.isNotEmpty) {
+    defaultName = name; // Usa o nome fornecido se houver
+  } else {
+    // Cria o nome padrão apenas com a linha e a data brasileira
+    final now = DateTime.now();
+    final String formattedDay = now.day.toString().padLeft(2, '0');
+    final String formattedMonth = now.month.toString().padLeft(2, '0');
+    final String formattedYear = now.year.toString();
 
-  // Cria o nome padrão no formato DD/MM/AAAA
-  final String defaultBrazilianDateName = 'Linha ${rowIndex + 1} - $formattedDay/$formattedMonth/$formattedYear';
+    // Define o nome como "Salvo Linha X - DD/MM/AAAA"
+    defaultName = 'Salvo na linha ${rowIndex + 1} em $formattedDay/$formattedMonth/$formattedYear';
+  }
+  
+
 
   final newSavedRow = SavedRow(
     id: newId,
-    // Usa o nome fornecido se não estiver vazio, senão usa o nome padrão com data brasileira
-    name: name.isNotEmpty ? name : defaultBrazilianDateName,
+    name: defaultName, // Usa o nome definido acima
     originalRowIndex: rowIndex,
     icons: savedIcons,
   );

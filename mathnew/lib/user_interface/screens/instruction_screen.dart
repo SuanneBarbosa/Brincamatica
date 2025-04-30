@@ -20,10 +20,26 @@ class InstructionsScreen extends StatelessWidget {
               title: 'Movimentando o beija-flor',
               description:
                  
-                  'Para mover o beija-flor, basta arrastá-lo pela tela na direção desejada (cima, baixo, esquerda ou direita).',
+                  'Para mover o beija-flor, basta arrastá-lo pela tela na direção desejada (cima, baixo, esquerda ou direita) ou utilizar o Joystick que pode ser ativado no menu lateral.',
               semanticsDescription:
                 
                   'Arraste o beija-flor na tela para movê-lo.',
+            ),
+             _buildInstructionItem(
+              title: 'Ativando Joystick',
+              description:
+                 
+                  'Para ativar ou desativar o Joystick abra o menu lateral e clique na opção Joystick. Com a opção do Joystick ativa você pode usar os botões para mover o beija-flor.',
+              semanticsDescription:
+                
+                  'Ative ou desative o Joystick no menu lateral.',
+            ),
+            _buildInstructionItem(
+              title: 'Tocando a Linha Atual',
+              description:
+                  'Posicione o beija-flor na linha que deseja ouvir. Toque no botão de Play na barra inferior para iniciar a reprodução dos ícones daquela linha, um após o outro. O botão mudará para Pause. Toque no botão Pause para interromper temporariamente a reprodução, e toque novamente em Play para continuar de onde parou.',
+              semanticsDescription:
+                  'Use o botão Play/Pause na barra inferior para tocar ou pausar a sequência de ícones da linha atual do beija-flor.',
             ),
            _buildInstructionItem(
               title: 'Adicionando Ícones',
@@ -59,25 +75,25 @@ class InstructionsScreen extends StatelessWidget {
                   'No menu lateral, utilize o controle deslizante "Tamanho do Ícone" para definir o tamanho dos próximos ícones a serem adicionados. Atenção: alterar o tamanho também removerá todos os ícones atuais da tela.',
               semanticsDescription:
                   
-                  'Ajuste o tamanho dos ícones usando o controle no menu lateral. Isso limpará a tela.',
+                  'Ajuste o tamanho dos ícones usando o controle deslizante "Tamanho do Ícone" no menu lateral.',
             ),
              _buildInstructionItem(
               title: 'Contador de Ícones',
               description:
                   
-                  'Acesse o menu lateral e toque em "Contador de Ícones" para visualizar rapidamente a quantidade total de ícones presentes na tela.',
+                  'Acesse o menu lateral e toque em "Contador de Ícones" para visualizar a quantidade total de ícones presentes na tela.',
               semanticsDescription:
                   
-                  'Verifique a quantidade de ícones na tela usando "Contador de Ícones" no menu.',
+                  'Verifique a quantidade de ícones na tela usando "Contador de Ícones" no menu lateral.',
             ),
               _buildInstructionItem(
               title: 'Salvar Linha Atual',
               description:
                   
-                  'No menu lateral, toque em "Salvar Linha Atual". Isso permitirá salvar a sequência de ícones da linha onde o beija-flor está posicionado. Você precisará digitar um nome para a linha e confirmar para salvá-la.',
+                  'No menu lateral, toque em "Salvar Linha Atual". Isso permitirá salvar a sequência de ícones da linha onde o beija-flor está posicionado.',
               semanticsDescription:
                   
-                  'Salve a sequência da linha atual do beija-flor através da opção no menu lateral.',
+                  'Salve a sequência da linha atual do beija-flor através da opção "Salvar Linha Atual" no menu lateral.',
             ),
              _buildInstructionItem(
               title: 'Gerenciar Linhas Salvas', 
@@ -106,7 +122,7 @@ class InstructionsScreen extends StatelessWidget {
           
         Semantics(
           label: title,   
-          header: true,   
+          header: false,   
           child: Text(
             title,
             style: const TextStyle(

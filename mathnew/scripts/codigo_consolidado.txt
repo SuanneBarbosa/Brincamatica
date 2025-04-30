@@ -42,8 +42,6 @@ class Main extends StatelessWidget {
 ----------------
 [models\saved_row_models.dart]
 
-
-// Represents a single icon within a saved row
 class SavedIconData {
   final String type;
   final int colIndex;
@@ -53,7 +51,7 @@ class SavedIconData {
     required this.colIndex,
   });
 
-  // For JSON serialization/deserialization
+  
   Map<String, dynamic> toJson() => {
         'type': type,
         'colIndex': colIndex,
@@ -65,11 +63,10 @@ class SavedIconData {
       );
 }
 
-// Represents a complete saved row
 class SavedRow {
-  final String id; // Unique identifier (e.g., timestamp)
-  final String name; // User-defined name
-  final int originalRowIndex; // Which row it was saved from (0, 1, or 2)
+  final String id; 
+  final String name; 
+  final int originalRowIndex; 
   final List<SavedIconData> icons;
 
   SavedRow({
@@ -79,7 +76,7 @@ class SavedRow {
     required this.icons,
   });
 
-   // For JSON serialization/deserialization
+  
    Map<String, dynamic> toJson() => {
          'id': id,
          'name': name,
@@ -89,7 +86,7 @@ class SavedRow {
 
    factory SavedRow.fromJson(Map<String, dynamic> json) => SavedRow(
          id: json['id'] as String,
-         name: json['name'] as String? ?? 'Linha Salva', // Default name if missing
+         name: json['name'] as String? ?? 'Linha Salva', 
          originalRowIndex: json['originalRowIndex'] as int,
          icons: (json['icons'] as List<dynamic>)
              .map((iconJson) => SavedIconData.fromJson(iconJson as Map<String, dynamic>))
@@ -135,32 +132,31 @@ class AudioService {
 [services\character_service.dart]
 
 import 'package:flutter/material.dart';
-import 'dart:math'; 
+import 'dart:math';
+
 class CharacterController extends ChangeNotifier {
   int _currentRowIndex = 0;
   int _currentColIndex = 0;
   final int _maxRows = 3;
   final int _maxCols = 10;
-  String _selectedCharacterType = 'boy_light'; 
+  String _selectedCharacterType = 'boy_light';
   double _screenWidth = 0;
   double _screenHeight = 0;
   double _rowHeight = 0;
   double _colWidth = 0;
-  double _verticalPadding = 0.0;   
-  double _horizontalPadding = 0.0; 
-  final double _iconSpacing = 5.0; 
+  double _verticalPadding = 0.0;
+  double _horizontalPadding = 0.0;
+  final double _iconSpacing = 5.0;
   final double _characterVisualHeight = 70.0;
   final double _characterVisualWidth = 50.0;
   final String _beijaFlorImagePath = 'assets/images/personagem.png';
   double _xPosition = 0;
   double _yPosition = 0;
   double _currentIconSizeSetting = 50.0;
-  double _maxAllowedIconSize = 50.0;     
-  bool _layoutInitialized = false; 
+  double _maxAllowedIconSize = 50.0;
+  bool _layoutInitialized = false;
   bool isHistoryMode = false;
- 
 
- 
   double get xPosition => _xPosition;
   double get yPosition => _yPosition;
   int get currentRowIndex => _currentRowIndex;
@@ -168,26 +164,22 @@ class CharacterController extends ChangeNotifier {
   int get maxCols => _maxCols;
   int get maxRows => _maxRows;
   double get currentIconSizeSetting => _currentIconSizeSetting;
-  double get maxAllowedIconSize => _maxAllowedIconSize; 
+  double get maxAllowedIconSize => _maxAllowedIconSize;
   bool get isLayoutInitialized => _layoutInitialized;
-  double get characterVisualHeight => _characterVisualHeight; 
-  double get characterVisualWidth => _characterVisualWidth; 
-  String get beijaFlorImagePath => _beijaFlorImagePath; 
-  String get selectedCharacterType => _selectedCharacterType; 
+  double get characterVisualHeight => _characterVisualHeight;
+  double get characterVisualWidth => _characterVisualWidth;
+  String get beijaFlorImagePath => _beijaFlorImagePath;
+  String get selectedCharacterType => _selectedCharacterType;
   double get horizontalPadding => _horizontalPadding;
   double get verticalPadding => _verticalPadding;
   double get rowHeight => _rowHeight;
-  double get colWidth => _colWidth; 
+  double get colWidth => _colWidth;
 
-
-   void setSelectedCharacter(String type) {
+  void setSelectedCharacter(String type) {
     const validTypes = ['boy_dark', 'boy_light', 'girl_dark', 'girl_light'];
     if (validTypes.contains(type)) {
       _selectedCharacterType = type;
-      debugPrint("Estilo de ícone/botão selecionado: $_selectedCharacterType");
-      notifyListeners(); 
-    } else {
-      debugPrint("Tentativa de selecionar tipo de estilo inválido: $type");
+      notifyListeners();
     }
   }
 
@@ -195,112 +187,102 @@ class CharacterController extends ChangeNotifier {
     final clampedSize = newSize.clamp(30.0, _maxAllowedIconSize);
     if (_currentIconSizeSetting != clampedSize) {
       _currentIconSizeSetting = clampedSize;
-      debugPrint("Icon size setting updated by UI to: $_currentIconSizeSetting (clamped from $newSize)");
       _updateLayoutParameters();
-      notifyListeners(); 
+      notifyListeners();
     }
   }
 
-
   void setScreenSize(double width, double height) {
-    if ((_screenWidth == width && _screenHeight == height) && _layoutInitialized) {
+    if ((_screenWidth == width && _screenHeight == height) &&
+        _layoutInitialized) {
       return;
     }
     _screenWidth = width;
     _screenHeight = height;
-    debugPrint("Screen Size Set: $width x $height. Recalculating layout...");
-    _layoutInitialized = false; 
-    _updateLayoutParameters(); 
-    resetPosition(); 
+    _layoutInitialized = false;
+
+    _updateLayoutParameters();
+
+    _currentRowIndex = 0;
+    _currentColIndex = 0;
+
+    _updatePosition();
   }
 
- 
-void _updateLayoutParameters() {
-  // ... (código existente para calcular _screenWidth, _screenHeight, etc.)
-
-  if (_screenWidth <= 0 || _screenHeight <= 0 || _maxCols <= 0) {
-      debugPrint("Screen dimensions or maxCols invalid. Aborting layout update.");
+  void _updateLayoutParameters() {
+    if (_screenWidth <= 0 || _screenHeight <= 0 || _maxCols <= 0) {
       return;
-  }
+    }
 
-  // --- Calcula altura da linha PRIMEIRO ---
-  const double gridTotalHeightPercentage = 0.60;
-  final double gridTotalHeight = _screenHeight * gridTotalHeightPercentage;
-  _rowHeight = gridTotalHeight / _maxRows;
-  _verticalPadding = 0.0; // Ou ajuste se necessário
+    const double gridTotalHeightPercentage = 0.60;
+    final double gridTotalHeight = _screenHeight * gridTotalHeightPercentage;
+    _rowHeight = gridTotalHeight / _maxRows;
+    _verticalPadding = 0.0;
 
-  // --- Calcula tamanho máximo baseado na LARGURA ---
-  double totalFixedSpacingWidth = (_maxCols > 1) ? (_maxCols - 1) * _iconSpacing : 0;
-  double availableWidthForIconsOnly = _screenWidth - totalFixedSpacingWidth;
-  double minTotalEdgePadding = 0.0;
-  availableWidthForIconsOnly = max(0, availableWidthForIconsOnly - minTotalEdgePadding);
-  _maxAllowedIconSize = max(30.0, (availableWidthForIconsOnly / _maxCols)).floorToDouble();
-  _maxAllowedIconSize = max(30.0, _maxAllowedIconSize); // Garante mínimo de 30
+    double totalFixedSpacingWidth =
+        (_maxCols > 1) ? (_maxCols - 1) * _iconSpacing : 0;
+    double availableWidthForIconsOnly = _screenWidth - totalFixedSpacingWidth;
+    double minTotalEdgePadding = 0.0;
+    availableWidthForIconsOnly =
+        max(0, availableWidthForIconsOnly - minTotalEdgePadding);
+    _maxAllowedIconSize =
+        max(30.0, (availableWidthForIconsOnly / _maxCols)).floorToDouble();
+    _maxAllowedIconSize = max(30.0, _maxAllowedIconSize);
 
-  // Ajusta o tamanho atual se necessário (antes de limitar pela altura)
-  if (!_layoutInitialized || _currentIconSizeSetting > _maxAllowedIconSize) {
-    debugPrint("Adjusting icon size from $_currentIconSizeSetting to max allowed by width $_maxAllowedIconSize");
-    _currentIconSizeSetting = _maxAllowedIconSize;
-  }
-  _currentIconSizeSetting = _currentIconSizeSetting.clamp(30.0, _maxAllowedIconSize);
+    if (!_layoutInitialized || _currentIconSizeSetting > _maxAllowedIconSize) {
+      
+      _currentIconSizeSetting = _maxAllowedIconSize;
+    }
+    _currentIconSizeSetting =
+        _currentIconSizeSetting.clamp(30.0, _maxAllowedIconSize);
 
-  // --- *** NOVA ETAPA: Limitar o tamanho do ícone pela ALTURA da linha *** ---
-  // Garante que o ícone não seja maior que o espaço vertical disponível na linha.
-  // Adiciona um pequeno padding (ex: 4 pixels) para evitar que toque nas bordas.
-  final double maxIconHeightBasedOnRow = max(10.0, _rowHeight - 4.0); // Garante tamanho mínimo e pequeno padding
-  // _currentIconSizeSetting = _currentIconSizeSetting.clamp(30.0, maxIconHeightBasedOnRow);
-  // Se o tamanho mínimo (30.0) já for maior que maxIconHeightBasedOnRow, ainda haverá sobreposição.
-  // Talvez o mínimo precise ser dinâmico também, ou _rowHeight precisa ser maior.
-  // Uma abordagem mais segura é usar min():
-  _currentIconSizeSetting = min(_currentIconSizeSetting, maxIconHeightBasedOnRow);
-  _currentIconSizeSetting = _currentIconSizeSetting.clamp(30.0, _maxAllowedIconSize); // Re-clamp com o mínimo original
+    final double maxIconHeightBasedOnRow = max(10.0, _rowHeight - 4.0);
 
-  // Usando min() pode ser mais seguro para evitar sobreposição a todo custo:
-  debugPrint("Initial icon size based on width/slider: $_currentIconSizeSetting");
-  _currentIconSizeSetting = min(_currentIconSizeSetting, maxIconHeightBasedOnRow);
-  // Precisa garantir que ainda respeite o mínimo absoluto de 30, se possível.
-  // A lógica pode ficar complexa aqui. A forma mais simples é:
-  _currentIconSizeSetting = _currentIconSizeSetting.clamp(30.0, maxIconHeightBasedOnRow);
-  debugPrint("Final icon size clamped by row height ($maxIconHeightBasedOnRow): $_currentIconSizeSetting");
-  // --- Fim da Nova Etapa ---
-
-
-  // --- Cálculos restantes que dependem do _currentIconSizeSetting FINAL ---
-  double visualGridWidth = (_maxCols * _currentIconSizeSetting) + totalFixedSpacingWidth;
-  _horizontalPadding = max(0.0, (_screenWidth - visualGridWidth) / 2.0);
-  _colWidth = _currentIconSizeSetting + _iconSpacing;
-
-  _updatePosition();
-  _layoutInitialized = true;
-  notifyListeners(); // Já notifica no final, não precisa de outro
-}
-void _updatePosition() {
-    if (!_layoutInitialized) return;
+    _currentIconSizeSetting =
+        min(_currentIconSizeSetting, maxIconHeightBasedOnRow);
+    _currentIconSizeSetting =
+        _currentIconSizeSetting.clamp(30.0, _maxAllowedIconSize);
 
    
-    _yPosition = _verticalPadding + (_currentRowIndex * _rowHeight) + (_rowHeight / 2) - (_characterVisualHeight / 2);
+    _currentIconSizeSetting =
+        min(_currentIconSizeSetting, maxIconHeightBasedOnRow);
 
-    
+    _currentIconSizeSetting =
+        _currentIconSizeSetting.clamp(30.0, maxIconHeightBasedOnRow);
+   
+
+    double visualGridWidth =
+        (_maxCols * _currentIconSizeSetting) + totalFixedSpacingWidth;
+    _horizontalPadding = max(0.0, (_screenWidth - visualGridWidth) / 2.0);
+    _colWidth = _currentIconSizeSetting + _iconSpacing;
+
+    _updatePosition();
+    _layoutInitialized = true;
+    notifyListeners();
+  }
+
+  void _updatePosition() {
+    if (!_layoutInitialized) return;
+
+    _yPosition = _verticalPadding +
+        (_currentRowIndex * _rowHeight) +
+        (_rowHeight / 2) -
+        (_characterVisualHeight / 2);
+
     double iconStartX = _horizontalPadding + (_currentColIndex * _colWidth);
 
-    
     _xPosition = iconStartX;
 
-    
     _xPosition = _xPosition.clamp(0, _screenWidth - _characterVisualWidth);
     _yPosition = _yPosition.clamp(0, _screenHeight - _characterVisualHeight);
+  }
 
-    
-}
- 
-   void moveRight() {
-     if (_currentColIndex < _maxCols - 1) {
-        _currentColIndex++;
-        _updatePosition();
-        notifyListeners();
-     } else {
-         debugPrint("Cannot move right: Already at last column index.");
-     }
+  void moveRight() {
+    if (_currentColIndex < _maxCols - 1) {
+      _currentColIndex++;
+      _updatePosition();
+      notifyListeners();
+    } 
   }
 
   void moveLeft() {
@@ -308,19 +290,15 @@ void _updatePosition() {
       _currentColIndex--;
       _updatePosition();
       notifyListeners();
-    } else {
-        debugPrint("Cannot move left: Already at first column index.");
-    }
+    } 
   }
 
-   void moveUp() {
+  void moveUp() {
     if (_currentRowIndex > 0) {
       _currentRowIndex--;
       _updatePosition();
       notifyListeners();
-    } else {
-         debugPrint("Cannot move up: Already at top row.");
-    }
+    } 
   }
 
   void moveDown() {
@@ -328,44 +306,42 @@ void _updatePosition() {
       _currentRowIndex++;
       _updatePosition();
       notifyListeners();
-    } else {
-         debugPrint("Cannot move down: Already at bottom row.");
-    }
+    } 
   }
 
- void moveToColumn(int targetColIndex) {
-      targetColIndex = targetColIndex.clamp(0, _maxCols - 1); 
-      if (_currentColIndex != targetColIndex) { 
-          _currentColIndex = targetColIndex;
-          _updatePosition();
-          notifyListeners();
-          debugPrint("Character moved to column index: $_currentColIndex");
-      }
+  void moveToColumn(int targetColIndex) {
+    targetColIndex = targetColIndex.clamp(0, _maxCols - 1);
+    if (_currentColIndex != targetColIndex) {
+      _currentColIndex = targetColIndex;
+      _updatePosition();
+      notifyListeners();
+      
+    }
   }
 
   void resetPosition() {
     _currentRowIndex = 0;
     _currentColIndex = 0;
-  
+
     if (_layoutInitialized) {
-        _updatePosition();
+      _updatePosition();
     }
     notifyListeners();
-    debugPrint("Character position reset to Row 0, Col 0");
+   
   }
 
-  
   void moveToGridCell(int targetRow, int targetCol) {
     targetRow = targetRow.clamp(0, _maxRows - 1);
     targetCol = targetCol.clamp(0, _maxCols - 1);
     if (_currentRowIndex != targetRow || _currentColIndex != targetCol) {
       _currentRowIndex = targetRow;
       _currentColIndex = targetCol;
-      _updatePosition(); 
-      notifyListeners(); 
+      _updatePosition();
+      notifyListeners();
     }
   }
 }
+
 ----------------
 [services\icon_service.dart]
 
@@ -396,12 +372,12 @@ class IconModel {
   bool isPartiallyOffscreen(
       double screenWidth, double screenHeight, BuildContext context) {
     return false;
-  } 
+  }
 
   List<String> getOffscreenEdges(
       double screenWidth, double screenHeight, BuildContext context) {
-     return [];
-  } 
+    return [];
+  }
 }
 
 class IconController extends ChangeNotifier {
@@ -409,7 +385,7 @@ class IconController extends ChangeNotifier {
     0: [],
     1: [],
     2: [],
-  }; 
+  };
   final int _maxCols = 10;
   double _rowHeight = 0;
   double _colWidth = 0;
@@ -424,37 +400,64 @@ class IconController extends ChangeNotifier {
     required double rowHeight,
     required double colWidth,
   }) {
+    bool layoutChanged = _horizontalPadding != horizontalPadding ||
+        _verticalPadding != verticalPadding ||
+        _rowHeight != rowHeight ||
+        _colWidth != colWidth;
+
     _horizontalPadding = horizontalPadding;
     _verticalPadding = verticalPadding;
     _rowHeight = rowHeight;
     _colWidth = colWidth;
+
+    if (layoutChanged) {
+    
+      for (int rowIndex in _rowIcons.keys) {
+        List<IconModel> updatedIcons = [];
+        for (IconModel oldIcon in _rowIcons[rowIndex]!) {
+          final double newX =
+              _horizontalPadding + (oldIcon.colIndex * _colWidth);
+          final double newY = _verticalPadding +
+              (oldIcon.rowIndex * _rowHeight) +
+              (_rowHeight / 2) -
+              (oldIcon.size / 2);
+          final Offset newPosition = Offset(newX, newY);
+
+          updatedIcons.add(IconModel(
+            position: newPosition,
+            type: oldIcon.type,
+            semanticsLabel: oldIcon.semanticsLabel,
+            size: oldIcon.size,
+            rowIndex: oldIcon.rowIndex,
+            colIndex: oldIcon.colIndex,
+          ));
+        }
+        _rowIcons[rowIndex] = updatedIcons;
+      }
+      notifyListeners();
+    }
   }
 
-  
   List<IconModel> get allIcons =>
       _rowIcons.values.expand((list) => list).toList();
   List<IconModel> getIconsForRow(int rowIndex) => _rowIcons[rowIndex] ?? [];
   int getNextColumnIndex(int rowIndex) => _rowIcons[rowIndex]?.length ?? 0;
   bool isRowFull(int rowIndex) => getNextColumnIndex(rowIndex) >= _maxCols;
 
-
-
   IconModel? getIconAt(int rowIndex, int colIndex) {
-    
     if (!_rowIcons.containsKey(rowIndex)) {
       return null;
     }
-   
+
     for (final icon in _rowIcons[rowIndex]!) {
       if (icon.colIndex == colIndex) {
         return icon;
       }
     }
-    
+
     return null;
   }
 
-  
   void replaceIconAt({
     required int rowIndex,
     required int colIndex,
@@ -462,40 +465,38 @@ class IconController extends ChangeNotifier {
     required String newSemanticsLabel,
     required double newSize,
   }) {
-     if (!_rowIcons.containsKey(rowIndex)) {
-       debugPrint("Erro: Tentativa de substituir ícone em linha inexistente: $rowIndex");
-       return;
-     }
+    if (!_rowIcons.containsKey(rowIndex)) {
+      return;
+    }
 
+    final list = _rowIcons[rowIndex]!;
+    final indexToReplace = list.indexWhere((icon) => icon.colIndex == colIndex);
+
+    if (indexToReplace == -1) {
      
-     final list = _rowIcons[rowIndex]!;
-     final indexToReplace = list.indexWhere((icon) => icon.colIndex == colIndex);
+      return;
+    }
 
-     if (indexToReplace == -1) {
-       debugPrint("Erro: Ícone não encontrado em ($rowIndex, $colIndex) para substituição.");
-       return;
-     }
+    final double x = _horizontalPadding + (colIndex * _colWidth);
+    final double y = _verticalPadding +
+        (rowIndex * _rowHeight) +
+        (_rowHeight / 2) -
+        (newSize / 2);
+    final Offset newPosition = Offset(x, y);
 
-     
-     final double x = _horizontalPadding + (colIndex * _colWidth);
-     final double y = _verticalPadding + (rowIndex * _rowHeight) + (_rowHeight / 2) - (newSize / 2);
-     final Offset newPosition = Offset(x, y);
+    final newIcon = IconModel(
+      position: newPosition,
+      type: newType,
+      semanticsLabel: newSemanticsLabel,
+      size: newSize,
+      rowIndex: rowIndex,
+      colIndex: colIndex,
+    );
 
-     
-     final newIcon = IconModel(
-       position: newPosition,
-       type: newType,
-       semanticsLabel: newSemanticsLabel,
-       size: newSize,
-       rowIndex: rowIndex,
-       colIndex: colIndex,
-     );
+    list[indexToReplace] = newIcon;
 
-     
-     list[indexToReplace] = newIcon;
-
-     debugPrint("Replaced icon at Row $rowIndex, Col $colIndex with '$newType'. Position: $newPosition, Size: $newSize");
-     notifyListeners(); 
+   
+    notifyListeners();
   }
 
   void addIcon({
@@ -506,22 +507,23 @@ class IconController extends ChangeNotifier {
     required double size,
   }) {
     const validTypes = [
-      "AssobiarIcon",
-      "BaterPeIcon",
+      "Assobiar",
+      "BaterPe",
       "BaterPalma",
       "EstalarDedo",
       "BaterPerna",
       "BaterPeito"
     ];
     if (!validTypes.contains(type)) throw ArgumentError("Tipo inválido: $type");
-     if (isRowFull(rowIndex)) {
-       debugPrint("Row $rowIndex full. Cannot add sequentially."); 
-      
-       return;
-     }
+    if (isRowFull(rowIndex)) {
+      return;
+    }
 
-    final double x = _horizontalPadding + (colIndex * _colWidth); 
-    final double y = _verticalPadding + (rowIndex * _rowHeight) + (_rowHeight / 2) - (size / 2);
+    final double x = _horizontalPadding + (colIndex * _colWidth);
+    final double y = _verticalPadding +
+        (rowIndex * _rowHeight) +
+        (_rowHeight / 2) -
+        (size / 2);
     final Offset position = Offset(x, y);
 
     final newIcon = IconModel(
@@ -530,13 +532,13 @@ class IconController extends ChangeNotifier {
       semanticsLabel: semanticsLabel,
       size: size,
       rowIndex: rowIndex,
-      colIndex: colIndex, 
+      colIndex: colIndex,
     );
 
     _rowIcons.putIfAbsent(rowIndex, () => []);
-    _rowIcons[rowIndex]?.add(newIcon); 
+    _rowIcons[rowIndex]?.add(newIcon);
 
-    debugPrint("Added icon SEQUENTIALLY '$type' at Row $rowIndex, Col $colIndex. Position: $position, Size: $size");
+   
     notifyListeners();
   }
 
@@ -546,7 +548,7 @@ class IconController extends ChangeNotifier {
     removed = true;
 
     if (removed) {
-      debugPrint("Removed icon '${icon.type}' from row ${icon.rowIndex}");
+     
       notifyListeners();
     }
   }
@@ -555,65 +557,63 @@ class IconController extends ChangeNotifier {
     for (final list in _rowIcons.values) {
       list.clear();
     }
-    debugPrint("All icons cleared.");
+  
     notifyListeners();
   }
 
   void checkAllIconsOffscreen(
       BuildContext context, double screenWidth, double screenHeight) {}
 
-       void clearRow(int rowIndex) {
+  void clearRow(int rowIndex) {
     if (_rowIcons.containsKey(rowIndex)) {
-      final int count = _rowIcons[rowIndex]!.length;
       _rowIcons[rowIndex]!.clear();
-      debugPrint("Cleared $count icons from row $rowIndex.");
+    
       notifyListeners();
-    } else {
-       debugPrint("Attempted to clear non-existent row $rowIndex.");
-    }
+    } 
   }
-  // Helper to get a simple label from type (you might already have this logic elsewhere)
- String _getSemanticsLabelFromType(String type) {
-    // Add more cases as needed or use a map lookup
+
+  String _getSemanticsLabelFromType(String type) {
     switch (type) {
-      case "BaterPeIcon": return "Bater Pe";
-      case "AssobiarIcon": return "Assobiar";
-      case "BaterPalma": return "Bater Palma";
-      case "EstalarDedo": return "Estalar Dedo";
-      case "BaterPerna": return "Bater Perna";
-      case "BaterPeito": return "Bater Peito";
-      default: return type; // Fallback
+      case "BaterPe":
+        return "Bater Pe";
+      case "Assobiar":
+        return "Assobiar";
+      case "BaterPalma":
+        return "Bater Palma";
+      case "EstalarDedo":
+        return "Estalar Dedo";
+      case "BaterPerna":
+        return "Bater Perna";
+      case "BaterPeito":
+        return "Bater Peito";
+      default:
+        return type;
     }
   }
 
-  // Method to apply a saved row's icons
-  void applySavedRow(int targetRowIndex, List<SavedIconData> savedIcons, double currentIconSize) {
+  void applySavedRow(int targetRowIndex, List<SavedIconData> savedIcons,
+      double currentIconSize) {
     if (targetRowIndex < 0 || targetRowIndex >= _rowIcons.length) {
-       debugPrint("Error: Invalid target row index $targetRowIndex for applying saved row.");
-       return;
+     
+      return;
     }
 
-    // 1. Clear the target row first
     clearRow(targetRowIndex);
 
-    // 2. Add icons from the saved data
     for (final savedIcon in savedIcons) {
-       if (savedIcon.colIndex >= 0 && savedIcon.colIndex < _maxCols) {
-          // Use the existing addIcon logic, ensuring it places at the correct colIndex
-          addIcon(
-             rowIndex: targetRowIndex,
-             colIndex: savedIcon.colIndex, // Use the saved column index
-             type: savedIcon.type,
-             semanticsLabel: _getSemanticsLabelFromType(savedIcon.type), // Regenerate label
-             size: currentIconSize, // Use the current global size setting
-          );
-       } else {
-           debugPrint("Skipping saved icon '${savedIcon.type}' at invalid column index ${savedIcon.colIndex}");
-       }
+      if (savedIcon.colIndex >= 0 && savedIcon.colIndex < _maxCols) {
+        addIcon(
+          rowIndex: targetRowIndex,
+          colIndex: savedIcon.colIndex,
+          type: savedIcon.type,
+          semanticsLabel: _getSemanticsLabelFromType(savedIcon.type),
+          size: currentIconSize,
+        );
+      } 
     }
-     debugPrint("Applied ${savedIcons.length} icons to row $targetRowIndex.");
-     // notifyListeners() is called within addIcon
-}}
+    
+  }
+}
 
 ----------------
 [services\saved_row_service.dart]
@@ -622,8 +622,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/saved_row_models.dart';
-import 'icon_service.dart'; // To access IconModel
-// To access current icon size
+import 'icon_service.dart'; 
+
 
 class SavedRowService extends ChangeNotifier {
   static const _savedRowsKey = 'saved_rows';
@@ -632,10 +632,9 @@ class SavedRowService extends ChangeNotifier {
   List<SavedRow> get savedRows => _savedRows;
 
   SavedRowService() {
-    loadSavedRows(); // Load rows when service is initialized
+    loadSavedRows(); 
   }
 
-  // Load rows from SharedPreferences
   Future<void> loadSavedRows() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -645,19 +644,19 @@ class SavedRowService extends ChangeNotifier {
         _savedRows = decodedList
             .map((item) => SavedRow.fromJson(item as Map<String, dynamic>))
             .toList();
-         debugPrint("Loaded ${_savedRows.length} saved rows.");
+      
       } else {
         _savedRows = [];
          debugPrint("No saved rows found or key is empty.");
       }
     } catch (e) {
-      _savedRows = []; // Reset on error
+      _savedRows = []; 
       debugPrint("Error loading saved rows: $e");
     }
     notifyListeners();
   }
 
-  // Save the current list of rows back to SharedPreferences
+
   Future<void> _persistRows() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -669,62 +668,74 @@ class SavedRowService extends ChangeNotifier {
     }
   }
 
-  // Save a specific row from the IconController
+ 
   Future<void> saveRow(int rowIndex, List<IconModel> iconsInRow, String name) async {
-    if (iconsInRow.isEmpty) {
-      debugPrint("Attempted to save an empty row ($rowIndex). Aborting.");
-      return; // Don't save empty rows
-    }
-
-    final String newId = 'row_${rowIndex}_${DateTime.now().millisecondsSinceEpoch}';
-    final List<SavedIconData> savedIcons = iconsInRow.map((icon) =>
-      SavedIconData(type: icon.type, colIndex: icon.colIndex)
-    ).toList();
-
-    // Ensure unique column indices (safety check, should already be unique)
-    final uniqueColIndices = <int>{};
-    savedIcons.retainWhere((icon) => uniqueColIndices.add(icon.colIndex));
-
-
-    final newSavedRow = SavedRow(
-      id: newId,
-      name: name.isNotEmpty ? name : 'Linha ${rowIndex + 1} - ${DateTime.now().toIso8601String().substring(0, 16)}', // Default name
-      originalRowIndex: rowIndex,
-      icons: savedIcons,
-    );
-
-    _savedRows.add(newSavedRow);
-    await _persistRows();
-    notifyListeners();
-    debugPrint("Saved row '$name' (ID: $newId) from index $rowIndex with ${savedIcons.length} icons.");
+  if (iconsInRow.isEmpty) {
+    debugPrint("Attempted to save an empty row ($rowIndex). Aborting.");
+    return; // Don't save empty rows
   }
 
-  // Delete a saved row by its ID
+  final String newId = 'row_${rowIndex}_${DateTime.now().millisecondsSinceEpoch}';
+  final List<SavedIconData> savedIcons = iconsInRow.map((icon) =>
+    SavedIconData(type: icon.type, colIndex: icon.colIndex)
+  ).toList();
+
+  // Ensure unique column indices (safety check, should already be unique)
+  final uniqueColIndices = <int>{};
+  savedIcons.retainWhere((icon) => uniqueColIndices.add(icon.colIndex));
+
+  // --- Lógica do Nome Padrão Simplificada ---
+  String defaultName;
+  if (name.isNotEmpty) {
+    defaultName = name; // Usa o nome fornecido se houver
+  } else {
+    // Cria o nome padrão apenas com a linha e a data brasileira
+    final now = DateTime.now();
+    final String formattedDay = now.day.toString().padLeft(2, '0');
+    final String formattedMonth = now.month.toString().padLeft(2, '0');
+    final String formattedYear = now.year.toString();
+
+    // Define o nome como "Salvo Linha X - DD/MM/AAAA"
+    defaultName = 'Salvo na linha ${rowIndex + 1} em $formattedDay/$formattedMonth/$formattedYear';
+  }
+  
+
+
+  final newSavedRow = SavedRow(
+    id: newId,
+    name: defaultName, // Usa o nome definido acima
+    originalRowIndex: rowIndex,
+    icons: savedIcons,
+  );
+
+  _savedRows.add(newSavedRow);
+  await _persistRows();
+  notifyListeners();
+  // O debugPrint usará o nome final (fornecido ou padrão)
+  debugPrint("Saved row '${newSavedRow.name}' (ID: $newId) from index $rowIndex with ${savedIcons.length} icons.");
+}
+
+  
   Future<void> deleteRow(String id) async {
     final initialLength = _savedRows.length;
     _savedRows.removeWhere((row) => row.id == id);
     if (_savedRows.length < initialLength) {
        await _persistRows();
        notifyListeners();
-       debugPrint("Deleted row with ID: $id");
-    } else {
-       debugPrint("Row with ID: $id not found for deletion.");
-    }
+    } 
   }
 
-  // Get a specific saved row by ID (needed for applying)
+  
   SavedRow? getSavedRowById(String id) {
       try {
           return _savedRows.firstWhere((row) => row.id == id);
       } catch (e) {
-          return null; // Not found
+          return null; 
       }
   }
 }
 ----------------
 [user_interface\screens\character_selection_screen.dart]
-
-// [user_interface\screens\character_selection_screen.dart]
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -734,6 +745,7 @@ import 'mathicons_screen.dart';
 class CharacterSelectionScreen extends StatelessWidget {
   const CharacterSelectionScreen({super.key});
 
+  // Lista dos tipos de personagens disponíveis
   final List<String> characterTypes = const [
     'boy_dark',
     'boy_light',
@@ -741,83 +753,122 @@ class CharacterSelectionScreen extends StatelessWidget {
     'girl_light',
   ];
 
+  // Retorna o caminho da imagem para um tipo de personagem
   String _getCharacterImagePath(String type) {
     return 'assets/images/characters/character_$type.png';
   }
 
+  // Retorna uma descrição semântica clara para cada opção de personagem
   String _getCharacterSemanticsLabel(String type) {
+    // Determina gênero e tom de pele a partir do tipo
     String gender = type.contains('boy') ? 'Menino' : 'Menina';
-    String tone = type.contains('dark') ? 'pele escura' : 'pele clara';
-    return '$gender, $tone. Toque para selecionar.';
+    String tone = type.contains('dark') ? 'pele negra' : 'pele clara';
+    // Cria a string descritiva, incluindo a instrução de ação
+    return 'Personagem $gender, $tone. Toque para selecionar este personagem.';
   }
+
+  // Retorna uma descrição semântica para o estado de erro da imagem
+  String _getErrorSemanticsLabel(String type) {
+    String gender = type.contains('boy') ? 'Menino' : 'Menina';
+    String tone = type.contains('dark') ? 'pele negra' : 'pele clara';
+    return 'Erro ao carregar imagem do personagem $gender, $tone.';
+  }
+
 
   @override
   Widget build(BuildContext context) {
+    // Obtém o controller do personagem via Provider
     final characterController = context.read<CharacterController>();
 
-    // Defina o espaçamento desejado entre os cards
-    const double itemSpacing = 12.0; // Ajuste conforme necessário
-
-    // *** Defina a largura máxima para a linha de cards ***
-    const double maxRowWidth = 600.0; // Ajuste este valor como desejar
+    // Constantes para espaçamento e largura máxima
+    const double itemSpacing = 12.0;
+    const double maxRowWidth = 600.0;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Escolha seu Personagem'),
+        // Envolve o título com Semantics para marcá-lo como cabeçalho
+        title: Semantics(
+          header: false, // Indica que é um cabeçalho de tela
+          child: const Text('Escolha seu Personagem'),
+        ),
         backgroundColor: Colors.blue,
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
+         iconTheme: const IconThemeData(color: Colors.white), // Garante ícone de voltar branco (se houver)
       ),
       body: Container(
+        // Cor de fundo da tela
         color: const Color.fromRGBO(220, 247, 255, 1.0),
-        child: Center( // Mantém o conteúdo centrado verticalmente
+        // Centraliza o conteúdo principal
+        child: Center(
           child: Padding(
+            // Padding geral vertical e horizontal
             padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 10.0),
-            // *** Centraliza a linha horizontalmente ***
-            child: Center( // Adicionado Center para centralizar o ConstrainedBox/Row
-              // *** Aplica a restrição de largura máxima ***
-              child: ConstrainedBox( // Adicionado ConstrainedBox
-                constraints: const BoxConstraints(maxWidth: maxRowWidth), // Define a largura máxima
-                child: Row( // Row força os itens em uma linha
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
+            // Centraliza a Row (útil se maxRowWidth for menor que a tela)
+            child: Center(
+              // Limita a largura máxima da Row de personagens
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: maxRowWidth),
+                // Row para exibir os personagens lado a lado
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center, // Alinha verticalmente
+                  mainAxisAlignment: MainAxisAlignment.center, // Centraliza horizontalmente
+                  // Mapeia cada tipo de personagem para um widget de seleção
                   children: characterTypes.map((type) {
-                    // Use Expanded para que cada item ocupe uma porção do espaço DENTRO do ConstrainedBox
-                    return Expanded( // Expanded distribui o espaço disponível na Row
+                    // Expanded para que cada item ocupe espaço igual na Row
+                    return Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: itemSpacing / 2), // Espaçamento entre cards
+                        // Espaçamento horizontal entre os cards
+                        padding: const EdgeInsets.symmetric(horizontal: itemSpacing / 2),
+                        // GestureDetector para tornar o card clicável
                         child: GestureDetector(
                           onTap: () {
+                            // Define o personagem selecionado no controller
                             characterController.setSelectedCharacter(type);
+                            // Navega para a tela principal, substituindo a atual
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(builder: (context) => const Mathicon()),
                             );
                           },
+                          // --- SEMANTICS PARA O CARD/BOTÃO DE SELEÇÃO ---
                           child: Semantics(
-                            label: _getCharacterSemanticsLabel(type),
-                            button: true,
-                            child: Card(
-                              elevation: 4,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                              clipBehavior: Clip.antiAlias,
-                              child: Padding(
-                                padding: const EdgeInsets.all(5.0),
-                                // Use AspectRatio para manter a proporção
-                                child: AspectRatio( // AspectRatio mantém a proporção da imagem
-                                  aspectRatio: 90 / 120, // Largura / Altura
-                                  child: Image.asset(
-                                    _getCharacterImagePath(type),
-                                    fit: BoxFit.contain, // Garante que a imagem caiba
-                                    errorBuilder: (context, error, stackTrace) {
-                                      print(
-                                          "Erro ao carregar imagem de seleção: ${_getCharacterImagePath(type)}\n$error");
-                                      return Container(
-                                          color: Colors.grey,
-                                          alignment: Alignment.center,
-                                          child: const Icon(Icons.error,
-                                              color: Colors.red, size: 30));
-                                    },
+                            label: _getCharacterSemanticsLabel(type), // Descrição clara da opção
+                            button: true, // Indica que é um botão (interativo)
+                            // ExcludeSemantics para evitar que o conteúdo interno (Card, Padding, Image)
+                            // seja focado separadamente pela acessibilidade, pois o pai já descreve tudo.
+                            child: ExcludeSemantics(
+                              child: Card(
+                                elevation: 4, // Sombra do card
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)), // Bordas arredondadas
+                                clipBehavior: Clip.antiAlias, // Corta conteúdo que excede as bordas
+                                child: Padding(
+                                  padding: const EdgeInsets.all(5.0), // Padding interno do card
+                                  // AspectRatio para manter a proporção da imagem (90/120)
+                                  child: AspectRatio(
+                                    aspectRatio: 90 / 120,
+                                    // Imagem do personagem
+                                    child: Image.asset(
+                                      _getCharacterImagePath(type),
+                                      fit: BoxFit.contain, // Ajusta a imagem dentro do espaço
+                                      // --- Tratamento de Erro da Imagem ---
+                                      errorBuilder: (context, error, stackTrace) {
+                                         // Log do erro para depuração
+                                        print("Erro ao carregar imagem de seleção: ${_getCharacterImagePath(type)}\n$error");
+                                        // Retorna um placeholder visual E SEMÂNTICO para o erro
+                                        return Semantics(
+                                          label: _getErrorSemanticsLabel(type), // Descreve qual imagem falhou
+                                          image: true, // Indica que representa uma imagem (faltando)
+                                          child: Container(
+                                              color: Colors.grey.shade300, // Fundo cinza
+                                              alignment: Alignment.center, // Centraliza o ícone
+                                              // Ícone de erro (excluído da semântica pois o pai descreve)
+                                              child: const ExcludeSemantics(
+                                                child: Icon(Icons.error_outline, color: Colors.redAccent, size: 30),
+                                              )),
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
@@ -826,7 +877,7 @@ class CharacterSelectionScreen extends StatelessWidget {
                         ),
                       ),
                     );
-                  }).toList(),
+                  }).toList(), // Converte o mapa para uma lista de widgets
                 ),
               ),
             ),
@@ -849,74 +900,103 @@ class InstructionsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Instruções de Uso"),
-        
+        backgroundColor: Colors.blue, 
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20), 
+        iconTheme: const IconThemeData(color: Colors.white), 
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
         child: ListView(
           children: [
            _buildInstructionItem(
-              title: 'Movimentando o Personagem',
+              title: 'Movimentando o beija-flor',
               description:
-                  'Arraste o personagem pela tela para movimentá-lo. Utilize o joystick na parte inferior da tela para mover o personagem nas quatro direções: cima, baixo, esquerda e direita. O joystick pode ser desativado no menu lateral.',
+                 
+                  'Para mover o beija-flor, basta arrastá-lo pela tela na direção desejada (cima, baixo, esquerda ou direita) ou utilizar o Joystick que pode ser ativado no menu lateral.',
               semanticsDescription:
-                  'Arraste para mover ou use o joystick.',
+                
+                  'Arraste o beija-flor na tela para movê-lo.',
+            ),
+             _buildInstructionItem(
+              title: 'Ativando Joystick',
+              description:
+                 
+                  'Para ativar ou desativar o Joystick abra o menu lateral e clique na opção Joystick. Com a opção do Joystick ativa você pode usar os botões para mover o beija-flor.',
+              semanticsDescription:
+                
+                  'Ative ou desative o Joystick no menu lateral.',
             ),
            _buildInstructionItem(
-              title: 'Adicionando ícone',
+              title: 'Adicionando Ícones',
               description:
-                  'Toque nos botões correspondentes aos tipos de ícones para adicioná-los à tela.',
+                 
+                  'Toque nos botões de ação, localizados na barra inferior, para adicionar os ícones correspondentes na posição atual do beija-flor.',
               semanticsDescription:
-                  'Toque nos botões para adicionar ícones.',
+                  
+                  'Adicione ícones tocando nos botões de ação na parte inferior da tela.',
             ),
-                       _buildInstructionItem(
-              title: 'Removendo ícone',
+           _buildInstructionItem(
+              title: 'Removendo um Ícone', 
               description:
-                  'Toque em um ícone na tela para removê-lo. Uma caixa de diálogo de confirmação será exibida.',
-              semanticsDescription: 'Toque no ícone para removê-lo.',
+                 
+                  'Para remover um ícone específico, toque sobre ele na tela. Uma caixa de diálogo de confirmação será exibida antes da remoção.',
+              semanticsDescription:
+                
+                  'Toque sobre um ícone para removê-lo.',
             ),
             _buildInstructionItem(
               title: 'Limpando a Tela',
               description:
-                  'Abra o menu lateral (ícone de menu no canto superior esquerdo) e toque em "Limpar Tela" para remover todos os ícones da tela.',
-              semanticsDescription: 'Use a opção "Limpar Tela" no menu lateral',
-            ),
 
-           _buildInstructionItem(
-              title: 'Ajustando o Tamanho do ícone',
-              description:
-                  'Abra o menu lateral (ícone de menu no canto superior esquerdo) e utilize o controle deslizante "Tamanho do ícone" para ajustar o tamanho dos ícones.',
+                  'Abra o menu lateral (ícone no canto superior esquerdo) e toque na opção "Limpar Tela" para remover todos os ícones da grade.',
               semanticsDescription:
-                  'Use o controle deslizante Tamanho do ícone no menu lateral.',
+                    
+                  'Use "Limpar Tela" no menu lateral para apagar todos os ícones.',
             ),
            _buildInstructionItem(
-              title: 'Criando Histórias',
+              title: 'Ajustando o Tamanho dos Ícones',  
               description:
-                  'Abra o menu lateral  e toque em "Criar História". Selecione as ações (movimentos e ícones) e o número de repetições para cada conjunto de ações. Toque em "Fazer História" para executar a sequência. Utilize o botão "Novo" para adicionar um novo conjunto de ações e repetições e o botão "Excluir" para remover um conjunto específico.  Ative a narração para que cada ação executada durante a história seja narrada.',
+                  
+                  'No menu lateral, utilize o controle deslizante "Tamanho do Ícone" para definir o tamanho dos próximos ícones a serem adicionados. Atenção: alterar o tamanho também removerá todos os ícones atuais da tela.',
               semanticsDescription:
-                  'Use a opção "Criar História" no menu lateral.',
-            ),
-            _buildInstructionItem(
-              title: 'Velocidade da Narração',
-              description:
-                  'Abra o menu lateral  e ajuste a velocidade da narração da história no menu lateral utilizando o controle deslizante "Velocidade da Narração".',
-              semanticsDescription:
-                  'Use o controle deslizante "Velocidade da Narração" no menu lateral .',
+                  
+                  'Ajuste o tamanho dos ícones usando o controle deslizante "Tamanho do Ícone" no menu lateral.',
             ),
              _buildInstructionItem(
-              title: 'Contador de ícones',
+              title: 'Contador de Ícones',
               description:
-                  'Abra o menu lateral  e toque em "Contador de ícones" para exibir a quantidade de ícones na tela.',
+                  
+                  'Acesse o menu lateral e toque em "Contador de Ícones" para visualizar a quantidade total de ícones presentes na tela.',
               semanticsDescription:
-                  'Use a opção "Contador de ícones" no menu lateral.',
+                  
+                  'Verifique a quantidade de ícones na tela usando "Contador de Ícones" no menu lateral.',
             ),
-            
+              _buildInstructionItem(
+              title: 'Salvar Linha Atual',
+              description:
+                  
+                  'No menu lateral, toque em "Salvar Linha Atual". Isso permitirá salvar a sequência de ícones da linha onde o beija-flor está posicionado.',
+              semanticsDescription:
+                  
+                  'Salve a sequência da linha atual do beija-flor através da opção "Salvar Linha Atual" no menu lateral.',
+            ),
+             _buildInstructionItem(
+              title: 'Gerenciar Linhas Salvas', 
+              description:
+                  
+                  'Abra o menu lateral e toque em "Linhas Salvas" para ver suas sequências guardadas. Para usar (aplicar) uma linha salva, toque no ícone verde ao lado dela e escolha em qual linha da tela principal (1, 2 ou 3) deseja inseri-la. Para apagar permanentemente uma linha salva, toque no ícone vermelho de lixeira.',
+              semanticsDescription:
+                  
+                  'Visualize, aplique ou exclua sequências de ícones salvas na opção "Linhas Salvas" do menu.',
+            ),
+
           ],
         ),
       ),
     );
   }
 
+    
   Widget _buildInstructionItem(
       {required String title,
       required String description,
@@ -924,30 +1004,38 @@ class InstructionsScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+          
         Semantics(
-          label: title,
-          header: false,
+          label: title,   
+          header: false,   
           child: Text(
             title,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
-              color: Colors.blueAccent,
+              color: Colors.blueAccent, 
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 8),  
+          
         Semantics(
-          label: semanticsDescription,
+          label: semanticsDescription,  
           child: Text(
             description,
-            textAlign: TextAlign.justify,
-            style: const TextStyle(fontSize: 16, color: Colors.black87),
+            textAlign: TextAlign.justify,   
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black87,  
+              height: 1.3,  
+            ),
           ),
         ),
+          
         const Divider(
-          thickness: 1,
-          height: 20,
+          thickness: 1, 
+          height: 30,   
+          color: Colors.black12,  
         ),
       ],
     );
@@ -960,17 +1048,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/character_service.dart';
 import '../../services/icon_service.dart';
-import '../widgets/joystick_button.dart';
 import '../widgets/menu_button.dart';
 import '../../services/audio_service.dart';
 import 'package:flutter/services.dart';
 import 'instruction_screen.dart';
 import 'tanks_screen.dart';
 import '../../services/saved_row_service.dart';
-import 'saved_rows_screen.dart'; 
-// ignore: unused_import
-import '../../models/saved_row_models.dart'; 
-
+import 'saved_rows_screen.dart';
+import '../widgets/joystick_button.dart'; // Certifique-se que este import está presente
+// Import IconModel se ainda não estiver importado corretamente
 
 class Mathicon extends StatefulWidget {
   const Mathicon({super.key});
@@ -980,11 +1066,18 @@ class Mathicon extends StatefulWidget {
 }
 
 class _MathiconState extends State<Mathicon> {
-  bool _showJoystick = false;
   final AudioService _audioService = AudioService();
   double _narrationSpeed = 1.0;
   final ScrollController _drawerScrollController = ScrollController();
-  bool _showCount = false;
+  bool _showCount = false; // <<< REVERTIDO: Variável de estado original
+  bool _showJoystick = false; // Joystick visível por padrão
+
+  @override
+  void initState() {
+    super.initState();
+    // Esconde as barras do sistema para imersão
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
 
   @override
   void dispose() {
@@ -993,18 +1086,9 @@ class _MathiconState extends State<Mathicon> {
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-  }
+  // --- Action Handlers (Como no seu código original) ---
 
-  Future<void> _narrateMovement(String directionSoundAsset) async {
-    await _audioService.playAudio(directionSoundAsset, speed: _narrationSpeed);
-  }
-
- 
- void _handleIconAction({
+  void _handleIconAction({
     required BuildContext context,
     required String type,
     required String semanticsLabel,
@@ -1013,14 +1097,15 @@ class _MathiconState extends State<Mathicon> {
     final iconController = context.read<IconController>();
 
     final int targetRow = characterController.currentRowIndex;
-    final int targetCol = characterController.currentColIndex; 
-    final double currentIconSizeSetting = characterController.currentIconSizeSetting;
+    final int targetCol = characterController.currentColIndex;
+    final double currentIconSizeSetting =
+        characterController.currentIconSizeSetting;
 
     IconModel? existingIcon = iconController.getIconAt(targetRow, targetCol);
 
     if (existingIcon != null) {
-      
-      print("Replacing icon at ($targetRow, $targetCol)");
+      debugPrint(
+          "Replacing icon at ($targetRow, $targetCol)"); // Mantido do original
       iconController.replaceIconAt(
         rowIndex: targetRow,
         colIndex: targetCol,
@@ -1029,123 +1114,100 @@ class _MathiconState extends State<Mathicon> {
         newSize: currentIconSizeSetting,
       );
       _playIconSound(type);
-      
     } else {
-     
-      final int nextAvailableCol = iconController.getNextColumnIndex(targetRow); 
+      // Lógica original para encontrar onde adicionar
+      final int nextAvailableCol = iconController.getNextColumnIndex(targetRow);
 
-      
-       if (iconController.getIconsForRow(targetRow).length >= iconController.maxCols) {
-         ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(
-             content: Semantics(
-               label: 'Alerta: Linha ${targetRow + 1} cheia.',
-               child: Text("Não é possível adicionar mais ícones na linha ${targetRow + 1} (máximo ${iconController.maxCols})."),
-             ),
-             duration: const Duration(seconds: 2),
-           ),
-         );
-         return;
-       }
-
-      int colToAddAt; 
-      int nextCharacterCol; 
-
-      
-      if (targetCol < nextAvailableCol) {
-          
-          colToAddAt = targetCol;
-          
-          nextCharacterCol = targetCol + 1;
-          print("Adding icon at specific empty slot: $targetCol");
-
-      } else {
-          
-          colToAddAt = nextAvailableCol;
-          
-          nextCharacterCol = colToAddAt + 1;
-          print("Adding icon sequentially at: $colToAddAt");
+      if (iconController.getIconsForRow(targetRow).length >=
+          iconController.maxCols) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Semantics(
+              label: 'Alerta: Linha ${targetRow + 1} cheia.',
+              child: Text(
+                  "Não é possível adicionar mais ícones na linha ${targetRow + 1} (máximo ${iconController.maxCols})."),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        return;
       }
 
-      
+      // Lógica original para coluna e próximo movimento
+      int colToAddAt;
+      int nextCharacterCol;
+
+      if (targetCol < nextAvailableCol) {
+        colToAddAt = targetCol;
+        nextCharacterCol = targetCol + 1;
+        // print("Adding icon at specific empty slot: $targetCol"); // Mantido do original
+      } else {
+        colToAddAt = nextAvailableCol;
+        nextCharacterCol = colToAddAt + 1;
+        // print("Adding icon sequentially at: $colToAddAt"); // Mantido do original
+      }
+
       iconController.addIcon(
         rowIndex: targetRow,
-        colIndex: colToAddAt, 
+        colIndex: colToAddAt,
         type: type,
         semanticsLabel: semanticsLabel,
         size: currentIconSizeSetting,
       );
       _playIconSound(type);
 
-      
       if (nextCharacterCol < characterController.maxCols) {
-          characterController.moveToColumn(nextCharacterCol);
+        characterController.moveToColumn(nextCharacterCol);
       } else {
-          characterController.moveToColumn(characterController.maxCols - 1);
-           debugPrint("Character moved to or remains in last column.");
+        characterController.moveToColumn(characterController.maxCols - 1);
+        // debugPrint("Character moved to or remains in last column."); // Mantido do original
       }
     }
   }
 
- 
   void _playIconSound(String type) {
-     String? soundPath;
-      switch (type) {
-        case "EstalarDedo": soundPath = 'assets/sounds/estalarDedos.mp3'; break;
-        case "BaterPalma": soundPath = 'assets/sounds/baterPalma.mp3'; break;
-        case "BaterPeito": soundPath = 'assets/sounds/baterPeito.mp3'; break;
-        case "BaterPerna": soundPath = 'assets/sounds/baterPerna.mp3'; break;
-        case "AssobiarIcon": soundPath = 'assets/sounds/assobiar.mp3'; break;
-        case "BaterPeIcon": soundPath = 'assets/sounds/baterPes.mp3'; break;
+    String? soundPath;
+    switch (type) {
+      case "EstalarDedo":
+        soundPath = 'assets/sounds/estalarDedos.mp3';
+        break;
+      case "BaterPalma":
+        soundPath = 'assets/sounds/baterPalma.mp3';
+        break;
+      case "BaterPeito":
+        soundPath = 'assets/sounds/baterPeito.mp3';
+        break;
+      case "BaterPerna":
+        soundPath = 'assets/sounds/baterPerna.mp3';
+        break;
+      case "Assobiar":
+        soundPath = 'assets/sounds/assobiar.mp3';
+        break;
+      case "BaterPe":
+        soundPath = 'assets/sounds/baterPes.mp3';
+        break;
+    }
+    if (soundPath != null) {
+      try {
+        _audioService.playAudio(soundPath, speed: _narrationSpeed);
+      } catch (e) {
+        debugPrint("Erro ao tocar som '$soundPath' em _playIconSound: $e");
       }
-      if (soundPath != null) {
-        try {
-          _audioService.playAudio(soundPath, speed: _narrationSpeed);
-        } catch (e) {
-          debugPrint("Erro ao tocar som '$soundPath' em _playIconSound: $e");
-        }
-      }
+    }
   }
 
-
-
-  Future<String?> _showSaveRowNameDialog(BuildContext context, int rowIndex) {
-    final TextEditingController nameController = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Salvar Linha ${rowIndex + 1}'),
-          content: TextField(
-            controller: nameController,
-            autofocus: true,
-            decoration: const InputDecoration(hintText: "Digite um nome para a linha"),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () => Navigator.of(context).pop(null),
-            ),
-            TextButton(
-              child: const Text('Salvar'),
-              onPressed: () => Navigator.of(context).pop(nameController.text),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-
+  // --- Build Method (Estrutura Principal como no seu original) ---
   @override
   Widget build(BuildContext context) {
+    // LayoutBuilder na raiz como no original
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
         final screenHeight = constraints.maxHeight;
 
+        // Callback para atualizar controllers como no original
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return; 
+          if (!mounted) return;
           final charController =
               Provider.of<CharacterController>(context, listen: false);
           charController.setScreenSize(screenWidth, screenHeight);
@@ -1156,396 +1218,18 @@ class _MathiconState extends State<Mathicon> {
               horizontalPadding: charController.horizontalPadding,
               verticalPadding: charController.verticalPadding,
               rowHeight: charController.rowHeight,
-              colWidth: charController.colWidth 
-              );
+              colWidth: charController.colWidth);
         });
 
         return Scaffold(
-          body: Container(
-            width: screenWidth,
-            height: screenHeight,
-            color: const Color.fromRGBO(220, 247, 255, 1.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Builder(
-                  builder: (context) {
-                    return Semantics(
-                      label: 'Abrir menu de navegação',
-                      button: true,
-                      child: IconButton(
-                        icon: const Icon(Icons.menu, color: Colors.blue),
-                        tooltip: "Abrir menu",
-                        onPressed: () => Scaffold.of(context).openDrawer(),
-                      ),
-                    );
-                  },
-                ),
-                Expanded(
-                  child: Stack(
-                    children: [
-                      Consumer<IconController>(
-                        builder: (context, iconController, child) {
-                          final characterController = context
-                              .watch<CharacterController>(); 
-                          final typeParts = characterController
-                              .selectedCharacterType
-                              .split('_');
-                          final gender = typeParts[0]; 
-                          final tone = typeParts[1];
-                          return Stack(
-                            children: iconController.allIcons.map((icon) {
-                              String imagePath;
-                              String basePath = 'assets/images/icons/icon_';
-
-                              switch (icon.type) {
-                                case "BaterPalma":
-                                  imagePath =
-                                      '${basePath}bater_palma_$tone.png';
-                                  break;
-                                case "EstalarDedo":
-                                  imagePath =
-                                      '${basePath}estalar_dedo_$tone.png';
-                                  break;
-                                case "BaterPeito":
-                                case "AssobiarIcon":
-                                case "BaterPeIcon":
-                                case "BaterPerna":
-                                  String snakeCaseType = icon.type
-                                      .replaceAllMapped(
-                                          RegExp(r'[A-Z]'),
-                                          (match) =>
-                                              '_${match.group(0)?.toLowerCase()}')
-                                      .substring(1);
-                                  imagePath =
-                                      '$basePath${snakeCaseType}_${gender}_$tone.png';
-                                  break;
-                                default:
-                                  imagePath = 'assets/images/placeholder.png';
-                                  print(
-                                      "AVISO: Ícone desconhecido: ${icon.type}");
-                              }
-                              return Positioned(
-                                top: icon
-                                    .position.dy, 
-                                left: icon
-                                    .position.dx, 
-                                child: InkWell(
-                                  onTap: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return AlertDialog(
-                                          backgroundColor:
-                                              Colors.white.withOpacity(0.8),
-                                          title: Center(
-                                            child: Semantics(
-                                              child: const Text("Remover ícone",
-                                                  style:
-                                                      TextStyle(fontSize: 18)),
-                                            ),
-                                          ),
-                                          content: const Text(
-                                              "Deseja remover o ícone?",
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(fontSize: 16)),
-                                          actionsAlignment:
-                                              MainAxisAlignment.center,
-                                          actions: [
-                                            Semantics(
-                                              label: 'Cancelar',
-                                              button: true,
-                                              child: ElevatedButton(
-                                                onPressed: () =>
-                                                    Navigator.of(context).pop(),
-                                                style: ElevatedButton.styleFrom(
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        8.0))),
-                                                child: const Text("Cancelar"),
-                                              ),
-                                            ),
-                                            Semantics(
-                                              label: 'Remover',
-                                              button: true,
-                                              child: ElevatedButton(
-                                                onPressed: () {
-                                                  iconController.removeIcon(
-                                                      icon);
-                                                  Navigator.of(context).pop();
-                                                },
-                                                style: ElevatedButton.styleFrom(
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        8.0))),
-                                                child: const Text("Remover"),
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  },
-                                  child: Semantics(
-                                    button: false,
-                                    label: icon.semanticsLabel,
-                                    child: Image.asset(
-                                      imagePath,
-                                      height: icon
-                                          .size, 
-                                      fit: BoxFit.contain,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                        print(
-                                            "Erro ao carregar imagem do ícone: $imagePath\n$error");
-                                        return Container(
-                                            width: icon.size,
-                                            height: icon.size,
-                                            color: Colors.red.withOpacity(0.5),
-                                            child: const Icon(Icons.error));
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          );
-                        },
-                      ),
-                      Consumer<CharacterController>(
-                        builder: (context, controller, child) {
-                          return Positioned(
-                            top: controller.yPosition,
-                            left: controller.xPosition,
-                            child: GestureDetector(
-                              onPanUpdate: (details) {
-                                if (!controller.isLayoutInitialized ||
-                                    controller.rowHeight <= 0 ||
-                                    controller.colWidth <= 0) {
-                                  return;
-                                }
-                                final double dragX = details.globalPosition.dx;
-                                final double dragY = details.globalPosition.dy;
-                                final double relativeX =
-                                    dragX - controller.horizontalPadding;
-                                final double relativeY =
-                                    dragY - controller.verticalPadding;
-                                int targetCol =
-                                    (relativeX / controller.colWidth).floor();
-                                int targetRow =
-                                    (relativeY / controller.rowHeight).floor();
-                                controller.moveToGridCell(targetRow, targetCol);
-                              },
-                              child: Semantics(
-                                label:
-                                    'Personagem. Beija-Flor. Linha ${controller.currentRowIndex + 1}, Posição ${controller.currentColIndex + 1}. Arraste para mover.',
-                                image: false,
-                                child: Image.asset(
-                                  controller.beijaFlorImagePath,
-                                  height: controller.characterVisualHeight,
-                                  width: controller.characterVisualWidth,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    print(
-                                        "Erro ao carregar Beija-Flor: ${controller.beijaFlorImagePath}\n$error");
-                                    return Container(
-                                        width: controller.characterVisualWidth,
-                                        height:
-                                            controller.characterVisualHeight,
-                                        color: Colors.grey);
-                                  },
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    
-                     Positioned(
-  bottom: 10,
-  left: 10,  // Mantém o posicionamento geral
-  right: 10, // Mantém o posicionamento geral
-  child: Center(
-  child: Consumer<CharacterController>(
-    builder: (context, characterController, child) {
-      // --- INÍCIO DO CÁLCULO DO TAMANHO ---
-      final screenWidth = MediaQuery.of(context).size.width;
-      // Define uma fração da largura da tela para o tamanho do ícone.
-      // Ajuste o multiplicador (ex: 0.08) conforme necessário.
-      // Adicione limites (clamp) para evitar tamanhos extremos.
-      const double minIconSize = 35.0; // Tamanho mínimo
-      const double maxIconSize = 65.0; // Tamanho máximo
-      final double targetIconSize = (screenWidth * 0.075).clamp(minIconSize, maxIconSize); // Experimente 0.075 ou 0.08
-
-      // --- FIM DO CÁLCULO DO TAMANHO ---
-
-
-      final typeParts = characterController.selectedCharacterType.split('_');
-      final gender = typeParts[0];
-      final tone = typeParts[1];
-      String buttonBasePath = 'assets/images/buttons/button_';
-
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-             MenuButton(
-              iconPath: '${buttonBasePath}assobiar_${gender}_${tone}_transp.png',
-              label: "Assobiar",
-              tooltip: "Adicionar Assobiar",
-              semanticsLabel: "Assobiar",
-              iconSize: targetIconSize, // <-- PASSA O TAMANHO CALCULADO
-               onTap: () => _handleIconAction(
-                    context: context,
-                    type: "AssobiarIcon",
-                    semanticsLabel: "Assobiar"),
-            ),
-            const SizedBox(width: 8),
-            MenuButton(
-              iconPath: '${buttonBasePath}estalar_dedo_${tone}_transp.png',
-              label: "Estalar Dedo",
-              tooltip: "Adicionar Estalar Dedo",
-              semanticsLabel: "Estalar Dedo",
-              iconSize: targetIconSize, // <-- PASSA O TAMANHO CALCULADO
-              onTap: () => _handleIconAction(
-                    context: context,
-                    type: "EstalarDedo",
-                    semanticsLabel: "Estalar Dedo"),
-            ),
-            const SizedBox(width: 8),
-            MenuButton(
-              iconPath: '${buttonBasePath}bater_palma_${tone}_transp.png',
-              label: "Bater Palma",
-              tooltip: "Adicionar Bater Palma",
-              semanticsLabel: "Bater Palma",
-              iconSize: targetIconSize, // <-- PASSA O TAMANHO CALCULADO
-               onTap: () => _handleIconAction(
-                    context: context,
-                    type: "BaterPalma",
-                    semanticsLabel: "Bater Palma"),
-            ),
-             const SizedBox(width: 8),
-             MenuButton(
-              iconPath: '${buttonBasePath}bater_pe_${gender}_${tone}_transp.png',
-              label: "Bater Pé",
-              tooltip: "Adicionar Bater Pé",
-              semanticsLabel: "Bater Pé",
-              iconSize: targetIconSize, // <-- PASSA O TAMANHO CALCULADO
-               onTap: () => _handleIconAction(
-                    context: context,
-                    type: "BaterPeIcon",
-                    semanticsLabel: "Bater Pé"),
-            ),
-             const SizedBox(width: 8),
-            MenuButton(
-              iconPath:'${buttonBasePath}bater_peito_${gender}_${tone}_transp.png',
-              label: "Bater Peito",
-              tooltip: "Adicionar Bater Peito",
-              semanticsLabel: "Bater Peito",
-              iconSize: targetIconSize, // <-- PASSA O TAMANHO CALCULADO
-              onTap: () => _handleIconAction(
-                    context: context,
-                    type: "BaterPeito",
-                    semanticsLabel: "Bater Peito"),
-            ),
-             const SizedBox(width: 8),
-            MenuButton(
-              iconPath:'${buttonBasePath}bater_perna_${gender}_${tone}_transp.png',
-              label: "Bater Perna",
-              tooltip: "Adicionar Bater Perna",
-              semanticsLabel: "Bater Perna",
-              iconSize: targetIconSize, // <-- PASSA O TAMANHO CALCULADO
-            onTap: () => _handleIconAction(
-                    context: context,
-                    type: "BaterPerna",
-                    semanticsLabel: "Bater Perna"),
-            ),
-          ],
-        ),
-      );
-    },
-  ),
-),
-   // <--- FECHA O CENTER
-),
-
- 
-                      
-                      // if (_showJoystick)
-                      //   Positioned(
-                      //     bottom: 10,
-                      //     right: 16, 
-                      //     child: Consumer<CharacterController>(
-                      //         builder: (context, controller, child) {
-                      //       return Row(
-                      //         mainAxisAlignment: MainAxisAlignment.end,
-                      //         children: [
-                      //           JoystickButton(
-                      //             icon: Icons.arrow_left,
-                      //             onPressed: () {
-                      //               controller.moveLeft();
-                      //               // _narrateMovement('assets/sounds/cima.mp3');
-                      //             },
-                      //             tooltip: "Mover para esquerda",
-                      //             semanticsLabel: "Mover para esquerda",
-                      //           ),
-                      //           const SizedBox(width: 1),
-                      //           Column(
-                      //             mainAxisAlignment: MainAxisAlignment.center,
-                      //             children: [
-                      //               JoystickButton(
-                      //                 icon: Icons.arrow_drop_up,
-                      //                 onPressed: () {
-                      //                   controller.moveUp();
-                      //                   // _narrateMovement('assets/sounds/cima.mp3');
-                      //                 },
-                      //                 tooltip: "Mover para cima",
-                      //                 semanticsLabel: "Mover para cima",
-                      //               ),
-                      //               const SizedBox(height: 10),
-                      //               JoystickButton(
-                      //                 icon: Icons.arrow_drop_down,
-                      //                 onPressed: () {
-                      //                   controller.moveDown();
-                      //                   // _narrateMovement('assets/sounds/baixo.mp3');
-                      //                 },
-                      //                 tooltip: "Mover para baixo",
-                      //                 semanticsLabel: "Mover para baixo",
-                      //               ),
-                      //             ],
-                      //           ),
-                      //           const SizedBox(width: 1),
-                      //           JoystickButton(
-                      //             icon: Icons.arrow_right,
-                      //             onPressed: () {
-                      //               controller.moveRight();
-                      //               // _narrateMovement('assets/sounds/direita.mp3');
-                      //             },
-                      //             tooltip: "Mover para direita",
-                      //             semanticsLabel: "Mover para direita",
-                      //           ),
-                      //         ],
-                      //       );
-                      //     }),
-                      //   ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // --- DRAWER (Como no seu original, incluindo Contador) ---
           drawer: Drawer(
             child: ListView(
+              controller: _drawerScrollController, // Original tinha controller
+              padding: EdgeInsets.zero, // Boa prática remover padding
               children: [
-                 DrawerHeader(
+                // --- CABEÇALHO DO DRAWER (Como no original) ---
+                DrawerHeader(
                   decoration: const BoxDecoration(
                     color: Colors.blue,
                   ),
@@ -1557,23 +1241,21 @@ class _MathiconState extends State<Mathicon> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Semantics(
-                              // label: 'Apoio',
-                              // header: true,
+                              // Semantics no title original
                               child: const Text(
                                 'Apoio',
                                 style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white),
                                 textAlign: TextAlign.center,
                               ),
                             ),
                             const SizedBox(height: 1),
                             Semantics(
+                              // Semantics nos logos original
                               label:
                                   'Logotipos dos apoiadores: IFSP, CNPQ e RUMO à Educação Matemática Inclusiva',
-                              // image: true,
                               child: Container(
                                 padding: const EdgeInsets.all(10.0),
                                 decoration: BoxDecoration(
@@ -1581,33 +1263,23 @@ class _MathiconState extends State<Mathicon> {
                                   borderRadius: BorderRadius.circular(15),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(2, 4),
-                                    ),
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 8,
+                                        offset: const Offset(2, 4))
                                   ],
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Image.asset(
-                                      'assets/images/IFSP_Logo.png',
-                                      height: 70,
-                                      fit: BoxFit.contain,
-                                    ),
+                                    Image.asset('assets/images/IFSP_Logo.png',
+                                        height: 70, fit: BoxFit.contain),
                                     const SizedBox(width: 5),
-                                    Image.asset(
-                                      'assets/images/CNPQ_Logo.png',
-                                      height: 70,
-                                      fit: BoxFit.contain,
-                                    ),
+                                    Image.asset('assets/images/CNPQ_Logo.png',
+                                        height: 70, fit: BoxFit.contain),
                                     const SizedBox(width: 5),
-                                    Image.asset(
-                                      'assets/images/RUMO_Logo.png',
-                                      height: 70,
-                                      fit: BoxFit.contain,
-                                    ),
+                                    Image.asset('assets/images/RUMO_Logo.png',
+                                        height: 70, fit: BoxFit.contain),
                                   ],
                                 ),
                               ),
@@ -1616,24 +1288,36 @@ class _MathiconState extends State<Mathicon> {
                         ),
                       ),
                       Positioned(
-                        bottom: 100,
-                        left: 230,
+                        // Botão fechar original
+                        bottom: 100, left: 230,
                         child: Semantics(
                           label: 'Botão de Fechar menu',
-                          // button: true,
                           child: IconButton(
                             icon: const Icon(Icons.close, color: Colors.white),
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
+                            onPressed: () => Navigator.pop(context),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              
+                // --- OPÇÕES DO MENU (Como no original) ---
+                SwitchListTile(
+                  // Switch Joystick original
+                  title: Semantics(
+                    label: 'Botões de controle de movimentos',
+                    child: const Text("Joystick"),
+                  ),
+                  value: _showJoystick,
+                  onChanged: (bool value) =>
+                      setState(() => _showJoystick = value),
+                  secondary: Icon(
+                    _showJoystick ? Icons.gamepad : Icons.gamepad_outlined,
+                    color: Colors.blue,
+                  ),
+                ),
                 ListTile(
+                  // Limpar Tela original
                   title: Semantics(
                     label: 'Remover todos os ícones da tela',
                     button: true,
@@ -1646,22 +1330,8 @@ class _MathiconState extends State<Mathicon> {
                     context.read<CharacterController>().resetPosition();
                   },
                 ),
-               
-                // SwitchListTile(
-                //   title: Semantics(
-                //     label: 'Botões de controle de movimentos',
-                //     child: const Text("Joystick"),
-                //   ),
-                //   value: _showJoystick,
-                //   onChanged: (bool value) =>
-                //       setState(() => _showJoystick = value),
-                //   secondary: Icon(
-                //     _showJoystick ? Icons.gamepad : Icons.gamepad_outlined,
-                //     color: Colors.blue,
-                //   ),
-                // ),
-               
                 ListTile(
+                  // Tamanho Ícone original
                   leading: const Icon(Icons.format_size, color: Colors.blue),
                   subtitle: Consumer<CharacterController>(
                       builder: (context, characterController, child) {
@@ -1670,47 +1340,38 @@ class _MathiconState extends State<Mathicon> {
                     }
                     return Semantics(
                       label:
-                          'Ajustar tamanho. Atual: ${characterController.currentIconSizeSetting.toStringAsFixed(0)}. '
-                          'Mínimo 30, Máximo permitido: ${characterController.maxAllowedIconSize.toStringAsFixed(0)}',
+                          'Ajustar tamanho. Atual: ${characterController.currentIconSizeSetting.toStringAsFixed(0)}. Mínimo 30, Máximo permitido: ${characterController.maxAllowedIconSize.toStringAsFixed(0)}. Alterar o tamanho limpará a tela.',
                       child: ExcludeSemantics(
                         child: Slider(
                           value: characterController.currentIconSizeSetting,
                           min: 30.0,
-                          max: characterController.maxAllowedIconSize,
-                          divisions: null,
+                          max: characterController.maxAllowedIconSize
+                              .clamp(30.0, double.infinity),
+                          divisions: null, // Original
                           label:
-                              'Tamanho: ${characterController.currentIconSizeSetting.toStringAsFixed(0)}',
+                              'Tamanho: ${characterController.currentIconSizeSetting.toStringAsFixed(0)}', // Original
                           onChanged: (double value) {
+                            // Original
+                            final iconController =
+                                context.read<IconController>();
                             characterController.setIconSizeSetting(value);
+                            iconController.clearIcons();
+                            characterController.resetPosition();
+                            iconController.updateLayoutParameters(
+                              horizontalPadding:
+                                  characterController.horizontalPadding,
+                              verticalPadding:
+                                  characterController.verticalPadding,
+                              rowHeight: characterController.rowHeight,
+                              colWidth: characterController.colWidth,
+                            );
                           },
                         ),
                       ),
                     );
                   }),
                 ),
-
-                ListTile(
-                  leading: const Icon(Icons.speed, color: Colors.blue),
-                  subtitle: Semantics(
-                    label:
-                        'Ajustar a velocidade da narração. Velocidade atual: ${_narrationSpeed.toStringAsFixed(1)}x.',
-                    child: ExcludeSemantics(
-                      child: Slider(
-                        value: _narrationSpeed,
-                        min: 0.7,
-                        max: 2.0,
-                        divisions: 8,
-                        label:
-                            'Velocidade: ${_narrationSpeed.toStringAsFixed(1)}x',
-                        onChanged: (double value) {
-                          setState(() => _narrationSpeed = value);
-                          _audioService.setSpeed(_narrationSpeed);
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-               
+                // <<< CONTADOR DE ÍCONES ORIGINAL >>>
                 Consumer<IconController>(
                     builder: (context, iconController, child) {
                   final iconCount = iconController.allIcons.length;
@@ -1721,80 +1382,71 @@ class _MathiconState extends State<Mathicon> {
                       button: true,
                       child: const Text("Contador de ícones"),
                     ),
-                    trailing: _showCount
+                    trailing: _showCount // Usa a variável de estado
                         ? Text('$iconCount',
                             style: const TextStyle(
                                 fontSize: 16, color: Colors.blue))
                         : null,
-                    onTap: () => setState(() => _showCount = !_showCount),
+                    onTap: () => setState(
+                        () => _showCount = !_showCount), // Usa setState
                   );
                 }),
-
-                const Divider(), 
-
+                const Divider(),
                 ListTile(
-                   leading: const Icon(Icons.save_alt, color: Colors.blue),
-                   title: Semantics(
-                     label: 'Salvar a linha onde o personagem está',
-                     button: true,
-                     child: const Text("Salvar Linha Atual"),
-                   ),
-                   onTap: () async {
-                     Navigator.pop(context); // Close drawer first
-                     final characterController = context.read<CharacterController>();
-                     final iconController = context.read<IconController>();
-                     final savedRowService = context.read<SavedRowService>();
-
-                     final int currentRow = characterController.currentRowIndex;
-                     final List<IconModel> iconsInCurrentRow = iconController.getIconsForRow(currentRow);
-
-                     if (iconsInCurrentRow.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('A linha atual está vazia. Nada para salvar.'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                        return;
-                     }
-
-                     // Prompt for name
-                     final String? rowName = await _showSaveRowNameDialog(context, currentRow);
-
-                     if (rowName != null) { // User didn't cancel
-                        await savedRowService.saveRow(currentRow, iconsInCurrentRow, rowName);
-                        ScaffoldMessenger.of(context).showSnackBar( 
-                          SnackBar(
-                            content: Text('Linha ${currentRow + 1} salva como "$rowName".'),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                     }
-
-                     
-                   },
-                 ),
-
-                 // --- MANAGE SAVED ROWS ---
-                 ListTile(
-                   leading: const Icon(Icons.list_alt, color: Colors.blue),
-                   title: Semantics(
-                     label: 'Ver e aplicar linhas salvas',
-                     button: true,
-                     child: const Text("Linhas Salvas"),
-                   ),
-                   onTap: () {
-                     Navigator.pop(context); // Close drawer
-                     Navigator.push(
-                       context,
-                       MaterialPageRoute(builder: (context) => const SavedRowsScreen()),
-                     );
-                   },
-                 ),
-
-const Divider(), 
-              
+                  // Salvar Linha Atual original (sem pedir nome)
+                  leading: const Icon(Icons.save_alt, color: Colors.blue),
+                  title: Semantics(
+                    label: 'Salvar a linha onde o Beija-Flor está posicionado',
+                    button: true,
+                    child: const Text("Salvar Linha Atual"),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final characterController =
+                        context.read<CharacterController>();
+                    final iconController = context.read<IconController>();
+                    final savedRowService = context.read<SavedRowService>();
+                    final int currentRow = characterController.currentRowIndex;
+                    final List<IconModel> iconsInCurrentRow =
+                        iconController.getIconsForRow(currentRow);
+                    if (iconsInCurrentRow.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text(
+                                'A linha atual está vazia. Nada para salvar.'),
+                            duration: Duration(seconds: 2)),
+                      );
+                      return;
+                    }
+                    await savedRowService.saveRow(currentRow, iconsInCurrentRow,
+                        ""); // Salva com nome padrão
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                              'Linha ${currentRow + 1} salva com sucesso.'),
+                          duration: const Duration(seconds: 2)),
+                    );
+                  },
+                ),
                 ListTile(
+                  // Linhas Salvas original
+                  leading: const Icon(Icons.list_alt, color: Colors.blue),
+                  title: Semantics(
+                    label: 'Ver e aplicar linhas salvas',
+                    button: true,
+                    child: const Text("Linhas Salvas"),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const SavedRowsScreen()));
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  // Instruções original
                   leading: const Icon(Icons.help_outline, color: Colors.blue),
                   title: Semantics(
                     label: 'Abrir a página de instruções de uso',
@@ -1805,8 +1457,8 @@ const Divider(),
                       MaterialPageRoute(
                           builder: (context) => const InstructionsScreen())),
                 ),
-              
                 ListTile(
+                  // Agradecimentos original
                   leading: const Icon(Icons.handshake, color: Colors.blue),
                   title: Semantics(
                     label: 'Abrir a página de agradecimentos',
@@ -1820,9 +1472,416 @@ const Divider(),
               ],
             ),
           ),
+          // --- CORPO PRINCIPAL (Stack Layout Original) ---
+          body: Container(
+            width: screenWidth,
+            height: screenHeight,
+            color: const Color.fromRGBO(220, 247, 255, 1.0),
+            // Stack principal para sobrepor elementos
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // --- Botão do Menu Superior (Como no original) ---
+                Builder(
+                  // Builder original para acesso ao Scaffold
+                  builder: (context) {
+                    return Semantics(
+                      label: 'Abrir menu de navegação',
+                      button: true,
+                      child: IconButton(
+                        icon: const Icon(Icons.menu, color: Colors.blue),
+                        tooltip: "Abrir menu",
+                        onPressed: () => Scaffold.of(context).openDrawer(),
+                        // Sem padding/splashRadius no original
+                      ),
+                    );
+                  },
+                ),
+
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Consumer<IconController>(
+                          builder: (context, iconController, child) {
+                        final characterController =
+                            context.watch<CharacterController>();
+                        if (!characterController.isLayoutInitialized) {
+                          return const SizedBox.shrink(); // Ou um placeholder
+                        }
+
+                        final typeParts = characterController
+                            .selectedCharacterType
+                            .split('_');
+                        final gender =
+                            typeParts.isNotEmpty ? typeParts[0] : 'boy';
+                        final tone =
+                            typeParts.length > 1 ? typeParts[1] : 'light';
+                        return Stack(
+                          children: iconController.allIcons.map((icon) {
+                            String imagePath;
+                            String basePath = 'assets/images/icons/icon_';
+                            switch (icon.type) {
+                              case "BaterPalma":
+                                imagePath = '${basePath}bater_palma_$tone.png';
+                                break;
+                              case "EstalarDedo":
+                                imagePath = '${basePath}estalar_dedo_$tone.png';
+                                break;
+                              case "BaterPeito":
+                              case "Assobiar":
+                              case "BaterPe":
+                              case "BaterPerna":
+                                String snakeCaseType = icon.type
+                                    .replaceAllMapped(
+                                        RegExp(r'[A-Z]'),
+                                        (match) =>
+                                            '_${match.group(0)?.toLowerCase()}')
+                                    .substring(1);
+                                imagePath =
+                                    '$basePath${snakeCaseType}_${gender}_$tone.png';
+                                break;
+                              default:
+                                imagePath =
+                                    'assets/images/placeholder.png'; //print("AVISO: Ícone desconhecido: ${icon.type}"); // Original não tinha print
+                            }
+                            return Positioned(
+                              key: ValueKey(
+                                  'icon_${icon.rowIndex}_${icon.colIndex}_${icon.type}'), // Adicionar chave é boa prática
+                              top: icon.position.dy, left: icon.position.dx,
+                              child: InkWell(
+                                onTap: () {
+                                  // Diálogo de remover original
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        backgroundColor:
+                                            Colors.white.withOpacity(0.8),
+                                        title: Center(
+                                            child: Semantics(
+                                                child: const Text(
+                                                    "Remover ícone",
+                                                    style: TextStyle(
+                                                        fontSize: 18)))),
+                                        content: const Text(
+                                            "Deseja remover o ícone?",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(fontSize: 16)),
+                                        actionsAlignment:
+                                            MainAxisAlignment.center,
+                                        actions: [
+                                          Semantics(
+                                              label: 'Cancelar',
+                                              button: true,
+                                              child: ElevatedButton(
+                                                  onPressed: () =>
+                                                      Navigator.of(context)
+                                                          .pop(),
+                                                  style: ElevatedButton.styleFrom(
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8.0))),
+                                                  child:
+                                                      const Text("Cancelar"))),
+                                          Semantics(
+                                              label: 'Remover',
+                                              button: true,
+                                              child: ElevatedButton(
+                                                  onPressed: () {
+                                                    iconController
+                                                        .removeIcon(icon);
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                  style: ElevatedButton.styleFrom(
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8.0))),
+                                                  child:
+                                                      const Text("Remover"))),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                                child: Semantics(
+                                  button: false,
+                                  label: icon.semanticsLabel,
+                                  child: Image.asset(
+                                    imagePath,
+                                    height: icon.size,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      // print("Erro img ícone: $imagePath\n$error"); // Original não tinha print
+                                      return Container(
+                                          width: icon.size,
+                                          height: icon.size,
+                                          color: Colors.red.withOpacity(0.5),
+                                          child: const Icon(Icons.error));
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      }),
+
+                      // --- DESENHO DO PERSONAGEM (Como no original) ---
+                      Consumer<CharacterController>(
+                          builder: (context, controller, child) {
+                        if (!controller.isLayoutInitialized) {
+                          return const SizedBox.shrink();
+                        } // Boa prática
+                        return Positioned(
+                          top: controller.yPosition,
+                          left: controller.xPosition,
+                          child: GestureDetector(
+                            onPanUpdate: (details) {
+                              // Lógica de PanUpdate original
+                              if (!controller.isLayoutInitialized ||
+                                  controller.rowHeight <= 0 ||
+                                  controller.colWidth <= 0) return;
+                              final double dragX = details.globalPosition.dx;
+                              final double dragY = details.globalPosition.dy;
+                              final double relativeX =
+                                  dragX - controller.horizontalPadding;
+                              final double relativeY =
+                                  dragY - controller.verticalPadding;
+                              int targetCol =
+                                  (relativeX / controller.colWidth).floor();
+                              int targetRow =
+                                  (relativeY / controller.rowHeight).floor();
+                              controller.moveToGridCell(targetRow, targetCol);
+                            },
+                            child: Semantics(
+                              // Semantics original
+                              label:
+                                  'Personagem. Beija-Flor. Linha ${controller.currentRowIndex + 1}, Posição ${controller.currentColIndex + 1}. Use o Joystick para mover.',
+                              image: false,
+                              child: Image.asset(
+                                controller.beijaFlorImagePath,
+                                height: controller.characterVisualHeight,
+                                width: controller.characterVisualWidth,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  // Error builder original
+                                  // print("Erro img Beija-Flor: ${controller.beijaFlorImagePath}\n$error"); // Original não tinha print
+                                  return Container(
+                                      width: controller.characterVisualWidth,
+                                      height: controller.characterVisualHeight,
+                                      color: Colors.grey);
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                // --- DESENHO DOS ÍCONES (Como no original) ---
+
+                // --- *** BARRA DE CONTROLES INFERIOR (NOVO LAYOUT APLICADO) *** ---
+
+                _buildBottomControlsRow(context),
+
+                // --- *** FIM DA SEÇÃO MODIFICADA *** ---
+              ], // Fim dos filhos da Stack principal
+            ),
+          ),
         );
       },
     );
+  } // Fim do método build
+
+  // --- Métodos Helper para a Barra Inferior (Adicionados/Mantidos) ---
+
+  // Método que organiza a linha inferior inteira (joystick esq, ações, joystick dir)
+  Widget _buildBottomControlsRow(BuildContext context) {
+    return Padding(
+      padding:
+          const EdgeInsets.only(bottom: 0.0, top: 0.0, left: 10.0, right: 10.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 50,
+            child: _showJoystick ? _buildLeftJoystick(context) : null,
+          ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.center, // Centraliza horizontalmente
+              child: _buildActionMenuBar(context),
+            ),
+          ),
+          SizedBox(
+            width: 50,
+            child: _showJoystick ? _buildRightJoystick(context) : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Método para construir a barra de MenuButton central
+  Widget _buildActionMenuBar(BuildContext context) {
+    // Exatamente como na versão anterior que você gostou
+    return Consumer<CharacterController>(
+        builder: (context, characterController, child) {
+      final screenWidth = MediaQuery.of(context).size.width;
+      const double minBtnIconSize = 40.0;
+      const double maxBtnIconSize = 60.0;
+      final double targetBtnIconSize =
+          (screenWidth * 0.070).clamp(minBtnIconSize, maxBtnIconSize);
+      final typeParts = characterController.selectedCharacterType.split('_');
+      final gender = typeParts.isNotEmpty ? typeParts[0] : 'boy';
+      final tone = typeParts.length > 1 ? typeParts[1] : 'light';
+      String buttonBasePath = 'assets/images/buttons/button_';
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              MenuButton(
+                iconPath:
+                    '${buttonBasePath}assobiar_${gender}_${tone}_transp.png',
+                label: "Assobiar",
+                tooltip: "Adicionar Assobiar",
+                semanticsLabel: "Assobiar",
+                iconSize: targetBtnIconSize,
+                onTap: () => _handleIconAction(
+                    context: context,
+                    type: "Assobiar",
+                    semanticsLabel: "Assobiar"),
+              ),
+              const SizedBox(width: 8),
+              MenuButton(
+                iconPath: '${buttonBasePath}estalar_dedo_${tone}_transp.png',
+                label: "Estalar Dedo",
+                tooltip: "Adicionar Estalar Dedo",
+                semanticsLabel: "Estalar Dedo",
+                iconSize: targetBtnIconSize,
+                onTap: () => _handleIconAction(
+                    context: context,
+                    type: "EstalarDedo",
+                    semanticsLabel: "Estalar Dedo"),
+              ),
+              const SizedBox(width: 8),
+              MenuButton(
+                iconPath: '${buttonBasePath}bater_palma_${tone}_transp.png',
+                label: "Bater Palma",
+                tooltip: "Adicionar Bater Palma",
+                semanticsLabel: "Bater Palma",
+                iconSize: targetBtnIconSize,
+                onTap: () => _handleIconAction(
+                    context: context,
+                    type: "BaterPalma",
+                    semanticsLabel: "Bater Palma"),
+              ),
+              const SizedBox(width: 8),
+              MenuButton(
+                iconPath:
+                    '${buttonBasePath}bater_pe_${gender}_${tone}_transp.png',
+                label: "Bater Pé",
+                tooltip: "Adicionar Bater Pé",
+                semanticsLabel: "Bater Pé",
+                iconSize: targetBtnIconSize,
+                onTap: () => _handleIconAction(
+                    context: context,
+                    type: "BaterPe",
+                    semanticsLabel: "Bater Pé"),
+              ),
+              const SizedBox(width: 8),
+              MenuButton(
+                iconPath:
+                    '${buttonBasePath}bater_peito_${gender}_${tone}_transp.png',
+                label: "Bater Peito",
+                tooltip: "Adicionar Bater Peito",
+                semanticsLabel: "Bater Peito",
+                iconSize: targetBtnIconSize,
+                onTap: () => _handleIconAction(
+                    context: context,
+                    type: "BaterPeito",
+                    semanticsLabel: "Bater Peito"),
+              ),
+              const SizedBox(width: 8),
+              MenuButton(
+                iconPath:
+                    '${buttonBasePath}bater_perna_${gender}_${tone}_transp.png',
+                label: "Bater Perna",
+                tooltip: "Adicionar Bater Perna",
+                semanticsLabel: "Bater Perna",
+                iconSize: targetBtnIconSize,
+                onTap: () => _handleIconAction(
+                    context: context,
+                    type: "BaterPerna",
+                    semanticsLabel: "Bater Perna"),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  // Método para construir o grupo esquerdo do Joystick
+  Widget _buildLeftJoystick(BuildContext context) {
+    // Exatamente como na versão anterior que você gostou
+    return Consumer<CharacterController>(builder: (context, controller, child) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          JoystickButton(
+            icon: Icons.arrow_upward,
+            onPressed: () => controller.moveUp(),
+            tooltip: "Mover para cima",
+            semanticsLabel: "Mover para cima",
+          ),
+          JoystickButton(
+            icon: Icons.arrow_back,
+            onPressed: () => controller.moveLeft(),
+            tooltip: "Mover para esquerda",
+            semanticsLabel: "Mover para esquerda",
+          ),
+        ],
+      );
+    });
+  }
+
+  // Método para construir o grupo direito do Joystick
+  Widget _buildRightJoystick(BuildContext context) {
+    // Exatamente como na versão anterior que você gostou
+    return Consumer<CharacterController>(builder: (context, controller, child) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          JoystickButton(
+            icon: Icons.arrow_downward,
+            onPressed: () => controller.moveDown(),
+            tooltip: "Mover para baixo",
+            semanticsLabel: "Mover para baixo",
+          ),
+          JoystickButton(
+            icon: Icons.arrow_forward,
+            onPressed: () => controller.moveRight(),
+            tooltip: "Mover para direita",
+            semanticsLabel: "Mover para direita",
+          ),
+        ],
+      );
+    });
   }
 }
 
@@ -1831,327 +1890,351 @@ const Divider(),
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/saved_row_models.dart';
+
+// Import Models and Services
+import '../../models/saved_row_models.dart'; // Ensure SavedIconData is imported
 import '../../services/saved_row_service.dart';
 import '../../services/icon_service.dart';
-import '../../services/character_service.dart'; // Import CharacterController
+import '../../services/character_service.dart';
 
 class SavedRowsScreen extends StatelessWidget {
   const SavedRowsScreen({super.key});
 
-  // --- Helper Function to Get Icon Image Path ---
-  // (Moved logic from MathiconScreen here for reusability)
+  // --- Helper Function to Get Icon Image Path (Mantida) ---
   String _getIconImagePath(String iconType, String gender, String tone) {
     String imagePath;
     String basePath = 'assets/images/icons/icon_';
-    String toneSuffix = tone.isNotEmpty ? '_$tone' : ''; // Handle potential empty tone just in case
-    String genderSuffix = gender.isNotEmpty ? '_$gender' : ''; // Handle potential empty gender
+    String toneSuffix = tone.isNotEmpty ? '_$tone' : '';
+    String genderSuffix = gender.isNotEmpty ? '_$gender' : '';
 
-    // Normalize tone/gender if they are part of the type already in some cases
-    // This logic matches the one in MathiconScreen builder
     switch (iconType) {
-      case "BaterPalma":
-        // Palmas uses tone directly
-        imagePath = '${basePath}bater_palma$toneSuffix.png';
-        break;
-      case "EstalarDedo":
-         // Estalar Dedo uses tone directly
-        imagePath = '${basePath}estalar_dedo$toneSuffix.png';
-        break;
+      case "BaterPalma": imagePath = '${basePath}bater_palma$toneSuffix.png'; break;
+      case "EstalarDedo": imagePath = '${basePath}estalar_dedo$toneSuffix.png'; break;
       case "BaterPeito":
       case "BaterPerna":
-      case "AssobiarIcon":
-      case "BaterPeIcon":
-        // These use gender and tone
-        String snakeCaseType = iconType
-            .replaceAllMapped(RegExp(r'[A-Z]'), (match) => '_${match.group(0)?.toLowerCase()}')
-            .substring(1); // Converts BaterPeito to bater_peito
+      case "Assobiar":
+      case "BaterPe":
+        String snakeCaseType = iconType.replaceAllMapped(RegExp(r'[A-Z]'), (match) => '_${match.group(0)?.toLowerCase()}').substring(1);
         imagePath = '$basePath$snakeCaseType$genderSuffix$toneSuffix.png';
         break;
-      default:
-        // Fallback placeholder if type is unknown
-        print("AVISO: Ícone desconhecido no preview: $iconType");
-        imagePath = 'assets/images/placeholder.png'; // Add a placeholder image to your assets
+      default: imagePath = 'assets/images/placeholder.png';
     }
-    // Append '_transp.png' for button images, but icon images don't have it
-    // Ensure the paths here match EXACTLY your icon asset filenames.
-    // Example: assets/images/icons/icon_bater_peito_boy_light.png
-
     return imagePath;
   }
 
-
-  // --- Helper to show confirmation dialog (Keep existing) ---
-  Future<bool?> _showConfirmationDialog(BuildContext context, String title, String content) {
-     // ... (keep existing code) ...
-     return showDialog<bool>(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text(title),
-            content: Text(content),
-            actions: <Widget>[
-              TextButton(
-                child: const Text('Cancelar'),
-                onPressed: () => Navigator.of(context).pop(false), // Return false
-              ),
-              TextButton(
-                child: const Text('Confirmar'),
-                onPressed: () => Navigator.of(context).pop(true), // Return true
-              ),
-            ],
-          );
-        },
-      );
+  // --- *** NOVO: Helper para gerar descrição semântica dos ícones *** ---
+  String _generateIconSemantics(List<SavedIconData> icons) {
+    if (icons.isEmpty) {
+      return 'Nenhum ícone.';
+    }
+    // Mapeia tipos de ícones para nomes legíveis (ajuste conforme necessário)
+    final iconNames = icons.map((iconData) {
+      switch (iconData.type) {
+        case "BaterPalma": return "Bater Palma";
+        case "EstalarDedo": return "Estalar Dedo";
+        case "BaterPeito": return "Bater Peito";
+        case "BaterPerna": return "Bater Perna";
+        case "Assobiar": return "Assobiar";
+        case "BaterPe": return "Bater Pé";
+        default: return iconData.type; // Fallback
+      }
+    }).toList();
+    // Junta os nomes com vírgula
+    return 'Ícones: ${iconNames.join(", ")}.';
   }
 
 
- // [user_interface\screens\saved_rows_screen.dart]
-// Dentro da classe SavedRowsScreen
+  // --- Helper para Diálogo de Confirmação (com Semantics adicionado) ---
+  Future<bool?> _showConfirmationDialog(BuildContext context, String title, String content) {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        // AlertDialog já tem um papel semântico de 'dialog'
+        return AlertDialog(
+          // Título com Semantics (opcional, mas bom para marcar como header)
+          title: Semantics(
+            header: true, // Marca como cabeçalho dentro do diálogo
+            child: Center(
+              child: Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18.0)),
+            ),
+          ),
+          // Conteúdo já é um Text, que fornece sua própria label
+          content: Text(content, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16.0)),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: <Widget>[
+            // Botão Cancelar (Semantics já estava, mantido)
+            Semantics(
+              label: 'Cancelar', // Label explícito (embora TextButton faça isso)
+              button: true,
+              child: ElevatedButton( // Usando ElevatedButton para consistência
+                onPressed: () => Navigator.of(context).pop(false), // Retorna false
+                style: ElevatedButton.styleFrom( shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)) ),
+                child: const Text("Cancelar", style: TextStyle(fontSize: 14.0)),
+              ),
+            ),
+             const SizedBox(width: 10), // Espaçamento
+            // Botão Confirmar (Semantics já estava, mantido)
+            Semantics(
+              label: 'Confirmar exclusão', // Label mais específico
+              button: true,
+              child: ElevatedButton(
+                // Destaque visual para ação destrutiva (opcional)
+                style: ElevatedButton.styleFrom( backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)) ),
+                onPressed: () => Navigator.of(context).pop(true), // Retorna true
+                child: const Text("Confirmar", style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
-// [user_interface\screens\saved_rows_screen.dart]
-// Dentro da classe SavedRowsScreen
+  // --- Helper para Diálogo de Seleção de Linha (com Semantics melhorado) ---
+  Future<int?> _showTargetRowDialog(BuildContext context) {
+    return showDialog<int>(
+      context: context,
+      builder: (BuildContext context) {
+        int? selectedRow = 0; // Estado inicial
 
-Future<int?> _showTargetRowDialog(BuildContext context) {
-  return showDialog<int>(
-    context: context,
-    builder: (BuildContext context) {
-      int? selectedRow = 0; // Default to first row
-
-      return AlertDialog(
-        title: const Text(
-          'Aplicar em qual linha?',
-          style: TextStyle(fontSize: 18.0),
-          textAlign: TextAlign.center,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0), // Ajuste vertical se necessário
-        actionsAlignment: MainAxisAlignment.center,
-
-        content: StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            // ----- INÍCIO DA MODIFICAÇÃO -----
-            // Envolve o Center com uma Column(mainAxisSize: min) para
-            // restringir a altura da área de conteúdo.
-            return Column(
-              mainAxisSize: MainAxisSize.min, // <-- Chave para limitar a altura
-              children: [
-                Center( // <-- Mantém o Center para centralizar a Row horizontalmente
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List<Widget>.generate(3, (int index) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              selectedRow = index;
-                            });
-                          },
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Radio<int>(
-                                value: index,
-                                groupValue: selectedRow,
-                                onChanged: (int? value) {
-                                  setState(() {
-                                    selectedRow = value;
-                                  });
+        return AlertDialog(
+          // Título com Semantics
+          title: Semantics(
+            header: true,
+            child: const Text('Aplicar em qual linha?', style: TextStyle(fontSize: 18.0), textAlign: TextAlign.center,),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+          actionsAlignment: MainAxisAlignment.center,
+          // Conteúdo com StatefulBuilder para gerenciar o estado do radio
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Centraliza a Row de opções
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min, // Row ocupa o mínimo necessário
+                      // Gera as opções de linha (0, 1, 2)
+                      children: List<Widget>.generate(3, (int index) {
+                        // *** Semantics Wrapper para cada opção de Rádio ***
+                        return Semantics(
+                          label: 'Selecionar Linha ${index + 1}', // Label claro
+                          // Indica se esta opção está selecionada
+                          value: selectedRow == index ? 'Selecionado' : 'Não selecionado',
+                          checked: selectedRow == index, // Estado para leitores de tela
+                          
+                          // ExcludeSemantics para evitar que o InkWell/Radio interno seja focado separadamente
+                          child: ExcludeSemantics(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              // InkWell para tornar toda a área clicável
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() { selectedRow = index; });
                                 },
-                                visualDensity: VisualDensity.compact,
-                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                child: Column( // Coluna para Radio + Texto
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Radio<int>(
+                                      value: index,
+                                      groupValue: selectedRow,
+                                      onChanged: (int? value) {
+                                        setState(() { selectedRow = value; });
+                                      },
+                                      visualDensity: VisualDensity.compact,
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(height: 2.0),
+                                    Text('Linha ${index + 1}', style: const TextStyle(fontSize: 12.0)),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 2.0),
-                              Text(
-                                'Linha ${index + 1}',
-                                style: const TextStyle(fontSize: 12.0),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      );
-                    }),
+                        );
+                      }),
+                    ),
                   ),
-                ),
-              ],
-            );
-            // ----- FIM DA MODIFICAÇÃO -----
-          },
-        ),
-        actions: <Widget>[
-          TextButton(
-            child: const Text(
-              'Cancelar',
-               style: TextStyle(fontSize: 14.0),
-            ),
-            onPressed: () => Navigator.of(context).pop(null),
+                ],
+              );
+            },
           ),
-          TextButton(
-            child: const Text(
-              'Aplicar',
-              style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold),
+          // Ações (Botões) do Diálogo
+          actions: <Widget>[
+            // Botão Cancelar (Semantics já estava ok)
+             Semantics(
+              label: 'Cancelar aplicação de linha', // Label mais específico
+              button: true,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                style: ElevatedButton.styleFrom( shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)) ),
+                child: const Text("Cancelar", style: TextStyle(fontSize: 14.0)),
+              ),
             ),
-            onPressed: () => Navigator.of(context).pop(selectedRow),
-          ),
-        ],
-      );
-    },
-  );
-}
+             const SizedBox(width: 10), // Espaçamento
+            // Botão Aplicar (Semantics já estava ok)
+             Semantics(
+              label: 'Aplicar na linha selecionada', // Label mais específico
+              button: true,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(selectedRow),
+                style: ElevatedButton.styleFrom( shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)), backgroundColor: Colors.green ), // Cor para ação positiva
+                child: const Text("Aplicar", style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
 
   @override
   Widget build(BuildContext context) {
-    // Access ALL providers needed
+    // Obtém services e controllers
     final savedRowService = Provider.of<SavedRowService>(context);
     final iconController = Provider.of<IconController>(context, listen: false);
-    // Access CharacterController TO GET GENDER/TONE for preview images
-    final characterController = Provider.of<CharacterController>(context, listen: false); // listen: false is okay here
-
-    // Get current gender and tone
+    final characterController = Provider.of<CharacterController>(context, listen: false);
+    // Obtém estilo atual do personagem para previews
     final typeParts = characterController.selectedCharacterType.split('_');
-    final String currentGender = typeParts.isNotEmpty ? typeParts[0] : 'boy'; // default if split fails
-    final String currentTone = typeParts.length > 1 ? typeParts[1] : 'light'; // default if split fails
+    final String currentGender = typeParts.isNotEmpty ? typeParts[0] : 'boy';
+    final String currentTone = typeParts.length > 1 ? typeParts[1] : 'light';
 
-    // Define a size for the preview icons
-    const double previewIconSize = 24.0; // Adjust as needed
+    const double previewIconSize = 24.0;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Linhas Salvas'),
+        // Título com Semantics de Cabeçalho
+        title: Semantics(
+          header: true,
+          child: const Text('Linhas Salvas'),
+        ),
         backgroundColor: Colors.blue,
-         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
+         iconTheme: const IconThemeData(color: Colors.white), // Ícone de voltar branco
       ),
       body: Container(
-         color: const Color.fromRGBO(220, 247, 255, 1.0), // Match main screen background
+         color: const Color.fromRGBO(220, 247, 255, 1.0), // Cor de fundo
+         // Verifica se há linhas salvas
          child: savedRowService.savedRows.isEmpty
+          // --- Estado Vazio ---
           ? const Center(
-              // ... (keep existing empty state text) ...
+               // Semantics já estava bom aqui
                child: Text(
                 'Nenhuma linha foi salva ainda.',
                 style: TextStyle(fontSize: 18, color: Colors.grey),
                 semanticsLabel: 'Nenhuma linha foi salva ainda.',
               ),
             )
+          // --- Lista de Linhas Salvas ---
           : ListView.builder(
               itemCount: savedRowService.savedRows.length,
               itemBuilder: (context, index) {
                 final savedRow = savedRowService.savedRows[index];
+                final String iconSemantics = _generateIconSemantics(savedRow.icons);
+
                 return Card(
                   margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
                   elevation: 3,
                   child: ListTile(
-                    // Make space for the preview row
-                    // isThreeLine: true, // Use if title/subtitle + preview needs more height
-
-                    title: Text(savedRow.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-
-                    // Use a Column to stack subtitle text and preview icons
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Original Subtitle Text
-                        // Text('Linha ${savedRow.originalRowIndex + 1}'),
-                        const SizedBox(height: 6.0), // Spacing
-
-                        // --- Preview Row ---
-                        if (savedRow.icons.isNotEmpty) // Only show if there are icons
-                           SingleChildScrollView( // Allows horizontal scrolling if icons overflow
-                             scrollDirection: Axis.horizontal,
-                             child: Row( // Or Wrap for auto-line breaking
-                               children: savedRow.icons.map((iconData) {
-                                 // Get the image path using the helper function and CURRENT character style
-                                 final String imagePath = _getIconImagePath(
-                                   iconData.type,
-                                   currentGender,
-                                   currentTone,
-                                 );
-
-                                 // Return an Image widget for the preview
-                                 return Padding(
-                                   padding: const EdgeInsets.only(right: 4.0), // Spacing between icons
-                                   child: Image.asset(
-                                     imagePath,
-                                     height: previewIconSize,
-                                     fit: BoxFit.contain,
-                                     // Optional: Add error builder for robustness
-                                     errorBuilder: (context, error, stackTrace) {
-                                       //print("Error loading preview icon: $imagePath\n$error");
-                                       return Container(
-                                         width: previewIconSize,
-                                         height: previewIconSize,
-                                         color: Colors.grey.shade300,
-                                         child: Icon(Icons.image_not_supported, size: previewIconSize * 0.6, color: Colors.grey.shade600),
-                                       );
-                                     },
+                   title: Text(savedRow.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                   
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 6.0),
+                            // Mostra a fileira de ícones apenas se houver ícones
+                            if (savedRow.icons.isNotEmpty)
+                               SingleChildScrollView(
+                                 scrollDirection: Axis.horizontal,
+                                 child: Semantics(
+                                   label: "Visualização dos ícones da linha salva. $iconSemantics", 
+                                   image: false, 
+                                   child: ExcludeSemantics(
+                                     child: Row(
+                                       children: savedRow.icons.map((iconData) {
+                                         final String imagePath = _getIconImagePath(iconData.type, currentGender, currentTone);
+                                         return Padding(
+                                           padding: const EdgeInsets.only(right: 4.0),
+                                           child: Image.asset(
+                                             imagePath, height: previewIconSize, fit: BoxFit.contain,
+                                             // Error builder como antes
+                                             errorBuilder: (context, error, stackTrace) {
+                                               return Container(
+                                                 width: previewIconSize, height: previewIconSize, color: Colors.grey.shade300,
+                                                 child: Icon(Icons.image_not_supported, size: previewIconSize * 0.6, color: Colors.grey.shade600),
+                                               );
+                                             },
+                                           ),
+                                         );
+                                       }).toList(),
+                                     ),
                                    ),
-                                 );
-                               }).toList(),
-                             ),
-                           )
-                         else
-                            const Text(""), // Placeholder if no icons (shouldn't happen if we prevent saving empty rows)
-
-                      ],
-                    ),
-
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // --- Apply Button (Keep existing) ---
-                        Tooltip(
-                          message: 'Aplicar esta linha na tela principal',
-                          child: IconButton(
-                            icon: const Icon(Icons.playlist_add_check, color: Colors.green),
-                            onPressed: () async {
-                              // ... (keep existing apply logic) ...
-                              final int? targetRow = await _showTargetRowDialog(context);
-                              if (targetRow != null) {
-                                 final double currentIconSize = characterController.currentIconSizeSetting;
-                                 iconController.applySavedRow(targetRow, savedRow.icons, currentIconSize);
-                                 ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                       content: Text('Linha "${savedRow.name}" aplicada na Linha ${targetRow + 1}.'),
-                                       duration: const Duration(seconds: 2),
-                                    ),
-                                 );
-                                 Navigator.pop(context);
-                              }
-                            },
-                            splashRadius: 24,
-                          ),
+                                 ),
+                               )
+                             else // Se não houver ícones (não deve acontecer se salvamento for prevenido)
+                                const SizedBox.shrink(), // Não mostra nada
+                          ],
                         ),
-                        const SizedBox(width: 5),
-                        // --- Delete Button (Keep existing) ---
-                        Tooltip(
-                          message: 'Excluir esta linha salva',
-                          child: IconButton(
-                            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                            onPressed: () async {
-                              // ... (keep existing delete logic) ...
-                               final confirmed = await _showConfirmationDialog(
-                                context,
-                                'Excluir Linha?',
-                                'Tem certeza que deseja excluir a linha salva "${savedRow.name}"?',
-                              );
-                              if (confirmed == true) {
-                                await savedRowService.deleteRow(savedRow.id);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Linha "${savedRow.name}" excluída.'),
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
-                              }
-                            },
-                             splashRadius: 24,
-                          ),
+                        // Botões de Ação (Aplicar / Excluir)
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // --- Botão Aplicar ---
+                            Tooltip( // Tooltip fornece a descrição padrão
+                              message: 'Aplicar esta linha na tela principal',
+                              child: Semantics( // Semantics explícito
+                                label: 'Aplicar esta linha', // Label mais específico
+                                button: true,
+                                child: IconButton(
+                                  icon: const Icon(Icons.playlist_add_check, color: Colors.green, semanticLabel: "Aplicar Linha"), // semanticLabel no Icon
+                                  onPressed: () async {
+                                    final int? targetRow = await _showTargetRowDialog(context);
+                                    if (targetRow != null && context.mounted) { // Verifica context.mounted
+                                       final double currentIconSize = characterController.currentIconSizeSetting;
+                                       iconController.applySavedRow(targetRow, savedRow.icons, currentIconSize);
+                                       ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('O conjunto "${savedRow.name}" foi aplicado na Linha ${targetRow + 1}.'), duration: const Duration(seconds: 2)),
+                                       );
+                                       // Tenta fechar a tela atual após aplicar
+                                       if (Navigator.canPop(context)) {
+                                         Navigator.pop(context);
+                                       }
+                                    }
+                                  },
+                                  splashRadius: 24,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            // --- Botão Excluir ---
+                            Tooltip( // Tooltip fornece a descrição padrão
+                              message: 'Excluir esta linha salva',
+                              child: Semantics( // Semantics explícito
+                                label: 'Excluir esta linha', // Label mais específico
+                                button: true,
+                                child: IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, semanticLabel: "Excluir Linha"), // semanticLabel no Icon
+                                  onPressed: () async {
+                                     final confirmed = await _showConfirmationDialog(context, 'Excluir Linha?', 'Tem certeza que deseja excluir a linha salva?');
+                                     if (confirmed == true && context.mounted) { // Verifica context.mounted
+                                        await savedRowService.deleteRow(savedRow.id);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('O conjunto "${savedRow.name}" foi excluído.'), duration: const Duration(seconds: 2)),
+                                        );
+                                     }
+                                  },
+                                   splashRadius: 24,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    // Ensure taps on the whole tile don't trigger actions unintended
-                    onTap: null,
+                        // onTap: null, // Garante que o ListTile em si não seja clicável
+                      
+                    
                   ),
                 );
               },
@@ -2248,56 +2331,53 @@ class ThankYouScreen extends StatelessWidget {
 ----------------
 [user_interface\widgets\joystick_button.dart]
 
-// import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
-// class JoystickButton extends StatelessWidget {
-//   final IconData icon;
-//   final VoidCallback onPressed;
-//   final String tooltip;
-//   final String semanticsLabel;
+class JoystickButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String tooltip;
+  final String semanticsLabel;
 
-//   const JoystickButton({
-//     super.key,
-//     required this.icon,
-//     required this.onPressed,
-//     required this.tooltip,
-//     required this.semanticsLabel,
-//   });
+  const JoystickButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    required this.tooltip,
+    required this.semanticsLabel,
+  });
 
-//   @override
-//   Widget build(BuildContext context) {
-//     final screenWidth = MediaQuery.of(context).size.width;
-//     final double buttonSize = (screenWidth * 0.08).clamp(5.0, 80.0);
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double buttonSize = (screenWidth * 0.08).clamp(5.0, 80.0);
 
-//     return Tooltip( 
-//       message: tooltip,
-//       child: ElevatedButton(
-//         style: ElevatedButton.styleFrom(
-//           padding: const EdgeInsets.all(2), 
-//           backgroundColor: Colors.blue.withOpacity(0.8),
-//         ),
-//         onPressed: onPressed,
+    return Tooltip( 
+      message: tooltip,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.all(2), 
+          backgroundColor: Colors.blue.withOpacity(0.8),
+        ),
+        onPressed: onPressed,
         
-//         child: Semantics( 
-//            label: semanticsLabel,
-//            child:  Icon(
-//               icon,
-//               color: Colors.white,
-//               size: buttonSize * 0.5,
-//            ),
-//         )
-//       ),
-//     );
-//   }
-// }
+        child: Semantics( 
+           label: semanticsLabel,
+           child:  Icon(
+              icon,
+              color: Colors.white,
+              size: buttonSize * 0.5,
+           ),
+        )
+      ),
+    );
+  }
+}
 
 ----------------
 [user_interface\widgets\menu_button.dart]
 
-// [user_interface/widgets/menu_button.dart]
-
 import 'package:flutter/material.dart';
-import 'dart:math'; // Importe para usar o 'max' ou 'min' se precisar, ou clamp
 
 class MenuButton extends StatelessWidget {
   final String iconPath;
@@ -2314,14 +2394,13 @@ class MenuButton extends StatelessWidget {
     required this.tooltip,
     required this.onTap,
     required this.semanticsLabel,
-    required this.iconSize, // <-- NOVO: Exigir o tamanho
+    required this.iconSize,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Calcular tamanho da fonte e espaçamento proporcionalmente, com limites
-    final double fontSize = (iconSize * 0.24).clamp(10.0, 15.0); // Ex: 24% do iconSize, min 10, max 15
-    final double spacing = (iconSize * 0.08).clamp(2.0, 6.0);   // Ex: 8% do iconSize, min 2, max 6
+    final double fontSize = (iconSize * 0.24).clamp(10.0, 15.0);
+    final double spacing = (iconSize * 0.08).clamp(2.0, 6.0);
 
     return Semantics(
       label: label,
@@ -2335,7 +2414,7 @@ class MenuButton extends StatelessWidget {
             children: [
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 8),
-                padding: const EdgeInsets.all(1), // Mantém padding pequeno
+                padding: const EdgeInsets.all(1),
                 decoration: BoxDecoration(
                   color: Colors.blue.withOpacity(0.8),
                   borderRadius: BorderRadius.circular(8),
@@ -2349,29 +2428,26 @@ class MenuButton extends StatelessWidget {
                 ),
                 child: Image.asset(
                   iconPath,
-                  height: iconSize, // <--- USA O TAMANHO RECEBIDO
+                  height: iconSize,
                   fit: BoxFit.contain,
-                   // Opcional: Definir largura também pode ajudar em alguns casos,
-                   // mas `contain` com altura geralmente funciona bem.
-                   // width: iconSize, // Descomente se quiser forçar a ser quadrado (pode distorcer)
                   errorBuilder: (context, error, stackTrace) {
-                     // É bom ter um errorBuilder que também use o iconSize
-                     print("Erro ao carregar imagem do botão: $iconPath\n$error");
-                     return Container(
-                       height: iconSize,
-                       width: iconSize, // Use um tamanho consistente para o placeholder
-                       color: Colors.grey.shade300,
-                       child: Icon(Icons.error_outline, size: iconSize * 0.6, color: Colors.redAccent),
-                     );
-                   },
+                  
+                    return Container(
+                      height: iconSize,
+                      width: iconSize,
+                      color: Colors.grey.shade300,
+                      child: Icon(Icons.error_outline,
+                          size: iconSize * 0.6, color: Colors.redAccent),
+                    );
+                  },
                 ),
               ),
-              SizedBox(height: spacing), // <-- USA O ESPAÇAMENTO CALCULADO
+              SizedBox(height: spacing),
               Text(
                 label,
-                style: TextStyle(fontSize: fontSize), // <-- USA O TAMANHO DA FONTE CALCULADO
+                style: TextStyle(fontSize: fontSize),
                 textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis, // Evita que texto muito longo quebre o layout
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -2380,4 +2456,5 @@ class MenuButton extends StatelessWidget {
     );
   }
 }
+
 ----------------

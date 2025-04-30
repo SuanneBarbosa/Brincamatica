@@ -4,7 +4,7 @@ class AudioService {
   final AudioPlayer _audioPlayer = AudioPlayer(); 
   
 
-  Future<void> playAudio(String assetPath, {double speed = 1.0}) async {
+  Future<void> playAudio(String assetPath) async {
     try {
       await _audioPlayer.setAsset(assetPath);
       await _audioPlayer.play();
@@ -20,11 +20,6 @@ class AudioService {
       print("Erro ao parar áudio: $e");
     }
   }
-
-   void setSpeed(double speed) {
-    _audioPlayer.setSpeed(speed);
-  }
-
   void dispose() {
     _audioPlayer.dispose(); 
   }
