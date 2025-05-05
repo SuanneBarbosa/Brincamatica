@@ -1,2 +1,0 @@
-C:/Users/suann/projetos-flutter/mathnew_app/mathnew/android/app/.cxx/Debug/525r6r4d/armeabi-v7a/CMakeFiles/edit_cache.dir
-C:/Users/suann/projetos-flutter/mathnew_app/mathnew/android/app/.cxx/Debug/525r6r4d/armeabi-v7a/CMakeFiles/rebuild_cache.dir

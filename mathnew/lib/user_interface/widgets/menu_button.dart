@@ -6,7 +6,7 @@ class MenuButton extends StatelessWidget {
   final String tooltip;
   final String semanticsLabel;
   final VoidCallback onTap;
-  final double iconSize; // <-- NOVO: Tamanho desejado para o ícone
+  final double iconSize; 
 
   const MenuButton({
     super.key,

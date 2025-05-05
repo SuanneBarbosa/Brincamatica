@@ -52,7 +52,7 @@ class SavedRowService extends ChangeNotifier {
   Future<void> saveRow(int rowIndex, List<IconModel> iconsInRow, String name) async {
   if (iconsInRow.isEmpty) {
     debugPrint("Attempted to save an empty row ($rowIndex). Aborting.");
-    return; // Don't save empty rows
+    return; 
   }
 
   final String newId = 'row_${rowIndex}_${DateTime.now().millisecondsSinceEpoch}';
@@ -60,22 +60,22 @@ class SavedRowService extends ChangeNotifier {
     SavedIconData(type: icon.type, colIndex: icon.colIndex)
   ).toList();
 
-  // Ensure unique column indices (safety check, should already be unique)
+ 
   final uniqueColIndices = <int>{};
   savedIcons.retainWhere((icon) => uniqueColIndices.add(icon.colIndex));
 
-  // --- Lógica do Nome Padrão Simplificada ---
+ 
   String defaultName;
   if (name.isNotEmpty) {
-    defaultName = name; // Usa o nome fornecido se houver
+    defaultName = name;
   } else {
-    // Cria o nome padrão apenas com a linha e a data brasileira
+   
     final now = DateTime.now();
     final String formattedDay = now.day.toString().padLeft(2, '0');
     final String formattedMonth = now.month.toString().padLeft(2, '0');
     final String formattedYear = now.year.toString();
 
-    // Define o nome como "Salvo Linha X - DD/MM/AAAA"
+   
     defaultName = 'Salvo na linha ${rowIndex + 1} em $formattedDay/$formattedMonth/$formattedYear';
   }
   

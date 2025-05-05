@@ -37,13 +37,10 @@ class _MathiconState extends State<Mathicon> {
     super.dispose();
   }
 
-// Dentro da classe _MathiconState (arquivo mathicons_screen.dart)
-
-  // --- NOVA FUNÇÃO HELPER PRIVADA PARA TOCAR SOM NA ADIÇÃO/REPLACE ---
   void _playFeedbackSound(BuildContext context, String type) {
-    // Lê a instância do AudioService via Provider
+    
     final audioService = context.read<AudioService>();
-    // A velocidade será a que estiver configurada no AudioService (1.0x agora)
+      
 
     String? soundPath;
     switch (type) {
@@ -68,7 +65,7 @@ class _MathiconState extends State<Mathicon> {
     }
     if (soundPath != null) {
       try {
-        // Chama o método playAudio do serviço (sem o parâmetro speed)
+          
         audioService.playAudio(soundPath);
       } catch (e) {
         debugPrint("Erro ao tocar som de feedback '$soundPath': $e");
@@ -81,7 +78,7 @@ class _MathiconState extends State<Mathicon> {
     required String type,
     required String semanticsLabel,
   }) async {
-    // Para playback se estiver ocorrendo
+    
     await context.read<PlaybackController>().stop();
 
     final characterController = context.read<CharacterController>();
@@ -93,7 +90,7 @@ class _MathiconState extends State<Mathicon> {
     IconModel? existingIcon = iconController.getIconAt(targetRow, targetCol);
 
     if (existingIcon != null) {
-      // --- Lógica de Substituição (Mantida) ---
+      
       debugPrint("Replacing icon at ($targetRow, $targetCol)");
       iconController.replaceIconAt(
         rowIndex: targetRow,
@@ -103,22 +100,16 @@ class _MathiconState extends State<Mathicon> {
         newSize: currentIconSizeSetting,
       );
       _playFeedbackSound(context, type);
-      // Ao substituir, o personagem geralmente não se move.
+      
     } else {
-      // --- Lógica de Adição (Com Movimento Corrigido) ---
 
-      // Verifica se a linha está cheia
-      //  if (iconController.getIconsForRow(targetRow).length >= iconController.maxCols) {
-      //      ScaffoldMessenger.of(context).showSnackBar(/*...*/); return;
-      //    }
-
-      // Verifica se a linha ESTAVA vazia ANTES de adicionar
+     
       bool wasRowEmpty = iconController.getIconsForRow(targetRow).isEmpty;
 
-      // Lógica ORIGINAL para determinar onde adicionar e qual a próxima coluna
+      
       final int nextAvailableCol = iconController.getNextColumnIndex(targetRow);
       int colToAddAt;
-      int nextCharacterCol; // Para onde ir DEPOIS de adicionar
+      int nextCharacterCol; 
 
       if (targetCol < nextAvailableCol) {
         colToAddAt = targetCol;
@@ -127,44 +118,42 @@ class _MathiconState extends State<Mathicon> {
         colToAddAt = nextAvailableCol;
         debugPrint("Adding icon sequentially at: $colToAddAt");
       }
-      // Calcula a próxima posição teórica do personagem (coluna seguinte à adicionada)
+   
       nextCharacterCol = colToAddAt + 1;
 
-      // Adiciona o ícone na coluna calculada
+    
       iconController.addIcon(
         rowIndex: targetRow,
-        colIndex: colToAddAt, // Usa a coluna calculada
+        colIndex: colToAddAt, 
         type: type,
         semanticsLabel: semanticsLabel,
         size: currentIconSizeSetting,
       );
-      _playFeedbackSound(context, type); // Toca som de feedback
+      _playFeedbackSound(context, type); 
 
-      // *** LÓGICA DE MOVIMENTO AJUSTADA ***
-      int targetMoveCol; // Coluna para onde o personagem DEVE ir
+     
+      int targetMoveCol; 
 
       if (wasRowEmpty) {
-        // Se era o primeiro ícone, o personagem deve ir para a coluna 1 (seguinte à adicionada na 0)
-        // A menos que o limite seja 1 coluna, nesse caso fica na 0.
+        
         targetMoveCol = (characterController.maxCols > 1) ? 1 : 0;
         debugPrint(
             "First icon added. Moving character to column $targetMoveCol.");
       } else {
-        // Se não era o primeiro, usa a próxima coluna calculada (nextCharacterCol)
+       
         targetMoveCol = nextCharacterCol;
         debugPrint(
             "Icon added. Moving character to next column: $targetMoveCol");
       }
 
-      // Aplica o movimento, garantindo que não ultrapasse o limite
+      
       targetMoveCol = targetMoveCol.clamp(0, characterController.maxCols - 1);
       characterController.moveToColumn(targetMoveCol);
-      // Não precisa mais do debug print aqui, já fizemos acima
+     
     }
   }
 
   void _limparTelaEPararPlayback() async {
-    // Para a reprodução usando o controller
     await context.read<PlaybackController>().stop();
     if (mounted) {
       context.read<IconController>().clearIcons();
@@ -173,7 +162,7 @@ class _MathiconState extends State<Mathicon> {
   }
 
   void _ajustarTamanhoEPararPlayback(double value) async {
-    // Para a reprodução usando o controller
+  
     await context.read<PlaybackController>().stop();
     if (mounted) {
       final characterController = context.read<CharacterController>();
@@ -181,7 +170,7 @@ class _MathiconState extends State<Mathicon> {
       characterController.setIconSizeSetting(value);
       iconController.clearIcons();
       characterController.resetPosition();
-      // Atualiza o layout do IconController após mudança de tamanho
+     
       iconController.updateLayoutParameters(
         horizontalPadding: characterController.horizontalPadding,
         verticalPadding: characterController.verticalPadding,
@@ -191,7 +180,7 @@ class _MathiconState extends State<Mathicon> {
     }
   }
 
-  // --- Build Method (Estrutura Principal como no seu original) ---
+ 
   @override
   Widget build(BuildContext context) {
     final playbackController = context.watch<PlaybackController>();
@@ -200,7 +189,7 @@ class _MathiconState extends State<Mathicon> {
         final screenWidth = constraints.maxWidth;
         final screenHeight = constraints.maxHeight;
 
-        // Callback para atualizar controllers como no original
+       
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           final charController =
@@ -217,11 +206,11 @@ class _MathiconState extends State<Mathicon> {
         });
 
         return Scaffold(
-          // --- DRAWER (Como no seu original, incluindo Contador) ---
+         
           drawer: Drawer(
             child: ListView(
-              controller: _drawerScrollController, // Original tinha controller
-              padding: EdgeInsets.zero, // Boa prática remover padding
+              controller: _drawerScrollController, 
+              padding: EdgeInsets.zero, 
               children: [
                 DrawerHeader(
                   decoration: const BoxDecoration(
@@ -235,7 +224,7 @@ class _MathiconState extends State<Mathicon> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Semantics(
-                              // Semantics no title original
+                            
                               child: const Text(
                                 'Apoio',
                                 style: TextStyle(
@@ -247,7 +236,7 @@ class _MathiconState extends State<Mathicon> {
                             ),
                             const SizedBox(height: 1),
                             Semantics(
-                              // Semantics nos logos original
+                            
                               label:
                                   'Logotipos dos apoiadores: IFSP, CNPQ e RUMO à Educação Matemática Inclusiva',
                               child: Container(
@@ -282,7 +271,7 @@ class _MathiconState extends State<Mathicon> {
                         ),
                       ),
                       Positioned(
-                        // Botão fechar original
+                      
                         bottom: 100, left: 230,
                         child: Semantics(
                           label: 'Botão de Fechar menu',
@@ -295,9 +284,9 @@ class _MathiconState extends State<Mathicon> {
                     ],
                   ),
                 ),
-                // --- OPÇÕES DO MENU (Como no original) ---
+               
                 SwitchListTile(
-                  // Switch Joystick original
+                
                   title: Semantics(
                     label: 'Botões de controle de movimentos',
                     child: const Text("Joystick"),
@@ -311,7 +300,6 @@ class _MathiconState extends State<Mathicon> {
                   ),
                 ),
                 ListTile(
-                  // Limpar Tela original
                   title: Semantics(
                     label: 'Remover todos os ícones da tela',
                     button: true,
@@ -320,13 +308,11 @@ class _MathiconState extends State<Mathicon> {
                   leading: const Icon(Icons.delete, color: Colors.blue),
                   onTap: () {
                     Navigator.pop(context);
-                    // context.read<IconController>().clearIcons();
-                    // context.read<CharacterController>().resetPosition();
                     _limparTelaEPararPlayback();
                   },
                 ),
                 ListTile(
-                  // Tamanho Ícone original
+                
                   leading: const Icon(Icons.format_size, color: Colors.blue),
                   subtitle: Consumer<CharacterController>(
                       builder: (context, characterController, child) {
@@ -342,11 +328,11 @@ class _MathiconState extends State<Mathicon> {
                           min: 30.0,
                           max: characterController.maxAllowedIconSize
                               .clamp(30.0, double.infinity),
-                          divisions: null, // Original
+                          divisions: null, 
                           label:
-                              'Tamanho: ${characterController.currentIconSizeSetting.toStringAsFixed(0)}', // Original
+                              'Tamanho: ${characterController.currentIconSizeSetting.toStringAsFixed(0)}', 
                           onChanged: (double value) {
-                            // Original
+                          
                             final iconController =
                                 context.read<IconController>();
                             characterController.setIconSizeSetting(value);
@@ -367,7 +353,7 @@ class _MathiconState extends State<Mathicon> {
                     );
                   }),
                 ),
-                // <<< CONTADOR DE ÍCONES ORIGINAL >>>
+              
                 Consumer<IconController>(
                     builder: (context, iconController, child) {
                   final iconCount = iconController.allIcons.length;
@@ -378,18 +364,18 @@ class _MathiconState extends State<Mathicon> {
                       button: true,
                       child: const Text("Contador de ícones"),
                     ),
-                    trailing: _showCount // Usa a variável de estado
+                    trailing: _showCount 
                         ? Text('$iconCount',
                             style: const TextStyle(
                                 fontSize: 16, color: Colors.blue))
                         : null,
                     onTap: () => setState(
-                        () => _showCount = !_showCount), // Usa setState
+                        () => _showCount = !_showCount), 
                   );
                 }),
                 const Divider(),
                 ListTile(
-                  // Salvar Linha Atual original (sem pedir nome)
+                
                   leading: const Icon(Icons.save_alt, color: Colors.blue),
                   title: Semantics(
                     label: 'Salvar a linha onde o Beija-Flor está posicionado',
@@ -415,7 +401,7 @@ class _MathiconState extends State<Mathicon> {
                       return;
                     }
                     await savedRowService.saveRow(currentRow, iconsInCurrentRow,
-                        ""); // Salva com nome padrão
+                        ""); 
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                           content: Text(
@@ -425,7 +411,7 @@ class _MathiconState extends State<Mathicon> {
                   },
                 ),
                 ListTile(
-                  // Linhas Salvas original
+               
                   leading: const Icon(Icons.list_alt, color: Colors.blue),
                   title: Semantics(
                     label: 'Ver e aplicar linhas salvas',
@@ -442,7 +428,7 @@ class _MathiconState extends State<Mathicon> {
                 ),
                 const Divider(),
                 ListTile(
-                  // Instruções original
+               
                   leading: const Icon(Icons.help_outline, color: Colors.blue),
                   title: Semantics(
                     label: 'Abrir a página de instruções de uso',
@@ -454,7 +440,7 @@ class _MathiconState extends State<Mathicon> {
                           builder: (context) => const InstructionsScreen())),
                 ),
                 ListTile(
-                  // Agradecimentos original
+                 
                   leading: const Icon(Icons.handshake, color: Colors.blue),
                   title: Semantics(
                     label: 'Abrir a página de agradecimentos',
@@ -468,18 +454,18 @@ class _MathiconState extends State<Mathicon> {
               ],
             ),
           ),
-          // --- CORPO PRINCIPAL (Stack Layout Original) ---
+        
           body: Container(
             width: screenWidth,
             height: screenHeight,
             color: const Color.fromRGBO(220, 247, 255, 1.0),
-            // Stack principal para sobrepor elementos
+        
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- Botão do Menu Superior (Como no original) ---
+               
                 Builder(
-                  // Builder original para acesso ao Scaffold
+               
                   builder: (context) {
                     return Semantics(
                       label: 'Abrir menu de navegação',
@@ -488,7 +474,7 @@ class _MathiconState extends State<Mathicon> {
                         icon: const Icon(Icons.menu, color: Colors.blue),
                         tooltip: "Abrir menu",
                         onPressed: () => Scaffold.of(context).openDrawer(),
-                        // Sem padding/splashRadius no original
+                       
                       ),
                     );
                   },
@@ -502,7 +488,7 @@ class _MathiconState extends State<Mathicon> {
                         final characterController =
                             context.watch<CharacterController>();
                         if (!characterController.isLayoutInitialized) {
-                          return const SizedBox.shrink(); // Ou um placeholder
+                          return const SizedBox.shrink(); 
                         }
 
                         final typeParts = characterController
@@ -538,11 +524,11 @@ class _MathiconState extends State<Mathicon> {
                                 break;
                               default:
                                 imagePath =
-                                    'assets/images/placeholder.png'; //print("AVISO: Ícone desconhecido: ${icon.type}"); // Original não tinha print
+                                    'assets/images/placeholder.png'; 
                             }
                             return Positioned(
                               key: ValueKey(
-                                  'icon_${icon.rowIndex}_${icon.colIndex}_${icon.type}'), // Adicionar chave é boa prática
+                                  'icon_${icon.rowIndex}_${icon.colIndex}_${icon.type}'), 
                               top: icon.position.dy, left: icon.position.dx,
                               child: InkWell(
                                 onTap: () async {
@@ -616,7 +602,7 @@ class _MathiconState extends State<Mathicon> {
                                     height: icon.size,
                                     fit: BoxFit.contain,
                                     errorBuilder: (context, error, stackTrace) {
-                                      // print("Erro img ícone: $imagePath\n$error"); // Original não tinha print
+                                     
                                       return Container(
                                           width: icon.size,
                                           height: icon.size,
@@ -631,7 +617,7 @@ class _MathiconState extends State<Mathicon> {
                         );
                       }),
 
-                      // --- DESENHO DO PERSONAGEM (Como no original) ---
+                     
                       Consumer<CharacterController>(
                           builder: (context, controller, child) {
                         if (!controller.isLayoutInitialized) {
@@ -642,15 +628,14 @@ class _MathiconState extends State<Mathicon> {
                           left: controller.xPosition,
                           child: GestureDetector(
                             onPanUpdate: (details) async {
-                              // Torna async
-                              // <<< INTERROMPER PLAYBACK AO ARRASTAR >>>
+                             
                               if (context
                                       .read<PlaybackController>()
                                       .isPlaying ||
                                   context.read<PlaybackController>().isPaused) {
                                 await context.read<PlaybackController>().stop();
                               }
-                              // Lógica original do PanUpdate...
+                             
                               if (!controller.isLayoutInitialized ||
                                   controller.rowHeight <= 0 ||
                                   controller.colWidth <= 0) return;
@@ -690,60 +675,56 @@ class _MathiconState extends State<Mathicon> {
                     ],
                   ),
                 ),
-                // --- DESENHO DOS ÍCONES (Como no original) ---
-
-                // --- *** BARRA DE CONTROLES INFERIOR (NOVO LAYOUT APLICADO) *** ---
-
                 _buildBottomControlsRow(context, playbackController),
 
-                // --- *** FIM DA SEÇÃO MODIFICADA *** ---
-              ], // Fim dos filhos da Stack principal
+                
+              ], 
             ),
           ),
         );
       },
     );
-  } // Fim do método build
+  } 
 
   Widget _buildBottomControlsRow(
       BuildContext context, PlaybackController playbackController) {
-    // Determina o texto e a ação do botão Play/Pause
+  
     final bool isCurrentlyPlaying =
         playbackController.isPlaying && !playbackController.isPaused;
     final String buttonText = isCurrentlyPlaying ? "Pause" : "Play";
     final VoidCallback onPressedAction = isCurrentlyPlaying
-        ? playbackController.pause // Ação para pausar
+        ? playbackController.pause 
         : () => playbackController
-            .playOrResume(context); // Ação para iniciar/retomar
+            .playOrResume(context); 
 
     return Padding(
-      // Padding ajustado para dar mais espaço vertical se necessário para o texto
+     
       padding:
           const EdgeInsets.only(bottom: 2.0, top: 0.0, left: 15.0, right: 15.0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center, // Alinha verticalmente
+        crossAxisAlignment: CrossAxisAlignment.center, 
         children: [
           
           Semantics(
             label: isCurrentlyPlaying ? 'Pausar reprodução da linha atual' : 'Tocar a linha atual do personagem',
             button: true,
-            child: ElevatedButton( // Usando ElevatedButton
+            child: ElevatedButton( 
               onPressed: onPressedAction,
               style: ElevatedButton.styleFrom(
-                 backgroundColor: Colors.blueAccent, // Cor de fundo azul
-                 foregroundColor: Colors.white, // Cor do texto branca
-                 padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 2), // Padding interno
-                 textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold), // Estilo do texto
-                 shape: RoundedRectangleBorder( // Bordas arredondadas
+                 backgroundColor: Colors.blueAccent, 
+                 foregroundColor: Colors.white,
+                 padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 2), 
+                 textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold), 
+                 shape: RoundedRectangleBorder( 
                    borderRadius: BorderRadius.circular(8.0),
                  ),
-                 minimumSize: const Size(60, 36), // Define um tamanho mínimo (opcional)
+                 minimumSize: const Size(60, 36), 
               ),
-              child: Text(buttonText), // Exibe o texto "Play" ou "Pause"
+              child: Text(buttonText), 
             ),
           ),
 
-          // Barra de Ações Central (mantida)
+        
           Expanded(
             child: Align(
               alignment: Alignment.center,
@@ -751,13 +732,13 @@ class _MathiconState extends State<Mathicon> {
             ),
           ),
           SizedBox(
-            width: 50, // Largura ligeiramente aumentada para equilíbrio visual
+            width: 50, 
             child: _showJoystick ? _buildLeftJoystick(context) : null,
           ),
           const SizedBox(width: 8),
-          // Coluna Direita do Joystick (mantida)
+         
           SizedBox(
-            width: 50, // Largura ligeiramente aumentada para equilíbrio visual
+            width: 50, 
             child: _showJoystick ? _buildRightJoystick(context) : null,
           ),
         ],
@@ -765,9 +746,7 @@ class _MathiconState extends State<Mathicon> {
     );
   }
 
-  // Método para construir a barra de MenuButton central
   Widget _buildActionMenuBar(BuildContext context) {
-    // Exatamente como na versão anterior que você gostou
     return Consumer<CharacterController>(
         builder: (context, characterController, child) {
       final screenWidth = MediaQuery.of(context).size.width;
@@ -870,9 +849,8 @@ class _MathiconState extends State<Mathicon> {
     });
   }
 
-  // Método para construir o grupo esquerdo do Joystick
+ 
   Widget _buildLeftJoystick(BuildContext context) {
-    // Exatamente como na versão anterior que você gostou
     return Consumer<CharacterController>(builder: (context, controller, child) {
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -895,9 +873,8 @@ class _MathiconState extends State<Mathicon> {
     });
   }
 
-  // Método para construir o grupo direito do Joystick
+ 
   Widget _buildRightJoystick(BuildContext context) {
-    // Exatamente como na versão anterior que você gostou
     return Consumer<CharacterController>(builder: (context, controller, child) {
       return Column(
         mainAxisSize: MainAxisSize.min,
