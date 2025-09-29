@@ -3,8 +3,6 @@ import 'character_selection_screen.dart';
 import '../../services/orientation_service.dart';
 import 'tutorial_overlay.dart';
 
-
-
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -19,69 +17,69 @@ class HomeScreen extends StatelessWidget {
       body: Container(
         color: const Color.fromRGBO(220, 247, 255, 1.0),
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildGameButton(
-                context: context,
-                label: 'Criar Melodia',
-                icon: Icons.music_note,
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      // Passamos o modo de jogo para a tela de seleção de personagem
-                      builder: (context) => const CharacterSelectionScreen(gameMode: GameMode.creation),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 40),
-              _buildGameButton(
-                context: context,
-                label: 'Jogo da Memória',
-                icon: Icons.memory,
-                onPressed: () async {
-                  final orientationService = OrientationService();
-                  final bool tutorialShown = await orientationService.hasShownMemoryGameTutorial();
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            // ⬇️ TROCA: Column -> Wrap para alinhar na HORIZONTAL
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 24,     // espaço horizontal entre botões
+              runSpacing: 24,  // espaço vertical quando quebrar linha
+              children: [
+                _buildGameButton(
+                  context: context,
+                  label: 'Criar Melodia',
+                  icon: Icons.music_note,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CharacterSelectionScreen(gameMode: GameMode.creation),
+                      ),
+                    );
+                  },
+                ),
+                _buildGameButton(
+                  context: context,
+                  label: 'Jogo da Memória',
+                  icon: Icons.memory,
+                  onPressed: () async {
+                    final orientationService = OrientationService();
+                    final bool tutorialShown = await orientationService.hasShownMemoryGameTutorial();
 
-                  if (context.mounted) {
-                    if (tutorialShown) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CharacterSelectionScreen(gameMode: GameMode.genius),
-                        ),
-                      );
-                    } else {
-                      // Chama a nova tela de overlay
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TutorialOverlay(),
-                        ),
-                      );
+                    if (context.mounted) {
+                      if (tutorialShown) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CharacterSelectionScreen(gameMode: GameMode.genius),
+                          ),
+                        );
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TutorialOverlay(),
+                          ),
+                        );
+                      }
                     }
-                  }
-                },
-              ),
-               const SizedBox(height: 30), // <-- NOVO ESPAÇAMENTO
-              // BOTÃO PARA O NOVO JOGO
-              _buildGameButton(
-                context: context,
-                label: 'Gerador de Melodias',
-                icon: Icons.auto_awesome_motion, // Um ícone sugestivo
-                onPressed: () {
-                   Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      // Passamos o novo modo de jogo
-                      builder: (context) => const CharacterSelectionScreen(gameMode: GameMode.generator),
-                    ),
-                  );
-                },
-              ),
-            ],
+                  },
+                ),
+                _buildGameButton(
+                  context: context,
+                  label: 'Gerador de Melodias',
+                  icon: Icons.auto_awesome_motion,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CharacterSelectionScreen(gameMode: GameMode.generator),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -94,22 +92,29 @@ class HomeScreen extends StatelessWidget {
     required IconData icon,
     required VoidCallback onPressed,
   }) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 32),
-      label: Text(label),
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        foregroundColor: Colors.white,
-        backgroundColor: Colors.blueAccent,
-        minimumSize: const Size(300, 80),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    // ⬇️ Mantém aparência e dá uma largura “fixa” para alinhar bonito no Wrap
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        minWidth: 260, // largura mínima do botão (ajuste se quiser)
+        maxWidth: 300, // trava um pouco para todos ficarem parecidos
+        minHeight: 80,
+      ),
+      child: ElevatedButton.icon(
+        icon: Icon(icon, size: 32),
+        label: Text(label),
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: Colors.blueAccent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+          elevation: 5,
         ),
-        textStyle: const TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-        ),
-        elevation: 5,
       ),
     );
   }

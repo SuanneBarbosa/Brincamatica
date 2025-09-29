@@ -10,6 +10,10 @@ class MemoryTutorialController extends ChangeNotifier {
   int _currentStepIndex = -1; // Começa antes do primeiro passo
   List<Function> _tutorialSteps = []; // Lista de funções, cada uma representa um passo
   bool get isTutorialActive => _currentStepIndex < _tutorialSteps.length;
+  // NOVO: Getter para saber qual o passo atual
+  int get currentStepIndex => _currentStepIndex;
+  int get totalSteps => _tutorialSteps.length;
+
 
   // --- Chaves e Destaques ---
   final Map<String, GlobalKey> cardKeys = {}; // Um mapa de chaves para cada tipo de card
@@ -69,7 +73,8 @@ class MemoryTutorialController extends ChangeNotifier {
   void _welcomeStep() {
     highlightRect = null;
     canTapHighlightedItem = false;
-    guidanceText = 'Bem-vindo ao Jogo da Memória! Para continuar, toque no botão "Começar" no canto inferior direito, ou toque em "Pular Tutorial" no canto inferior esquerdo.';
+    // MUDANÇA NO TEXTO
+    guidanceText = 'Bem-vindo ao Jogo da Memória! Para continuar, toque no botão "Começar" no canto inferior direito. Ou toque em "Pular Tutorial" no canto inferior esquerdo.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
@@ -78,7 +83,8 @@ class MemoryTutorialController extends ChangeNotifier {
   void _highlightStatusStep() {
     _calculateHighlight(statusKey);
     canTapHighlightedItem = false;
-    guidanceText = 'No painel superior, aparecerão as instruções como "Observe a sequência" ou "Sua vez", além da sua pontuação. Toque na tela para continuar.';
+    // MUDANÇA NO TEXTO
+    guidanceText = 'No painel superior, aparecerão as instruções como "Observe a sequência" ou "Sua vez", além da sua pontuação. Toque no botão "Próximo", no canto inferior direito da tela para continuar.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
@@ -87,7 +93,8 @@ class MemoryTutorialController extends ChangeNotifier {
   void _explainTimerStep() {
     _calculateHighlight(statusKey); // Mantém o destaque na barra de status
     canTapHighlightedItem = false;
-    guidanceText = 'Quando for a sua vez, um timer de 10 segundos aparecerá neste painel superior. Se não responder a tempo, o jogo termina. Toque na tela para continuar.';
+    // MUDANÇA NO TEXTO
+    guidanceText = 'Quando for a sua vez, um timer de 10 segundos aparecerá neste painel. Se não responder a tempo, o jogo termina. Toque no botão "Próximo" para continuar.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
@@ -98,7 +105,8 @@ class MemoryTutorialController extends ChangeNotifier {
     canTapHighlightedItem = true;
     
     String cardName = _getSemanticsLabelFromType(iconType);
-    guidanceText = 'Agora toque no botão "$cardName" duas vezes para ouvir seu som. Quando estiver pronto, toque no botão "Próximo", no canto inferior direito da tela, para ouvir o próximo som.';
+    // MUDANÇA NO TEXTO
+    guidanceText = 'Agora vá até o botão "$cardName" e toque duas vezes nele para ouvir seu som. Quando estiver pronto, toque no botão "Próximo" para ouvir o próximo som.';
     guidanceAlignment = Alignment.topCenter;
     _announce(guidanceText);
     notifyListeners();
@@ -108,14 +116,26 @@ class MemoryTutorialController extends ChangeNotifier {
     _gameController.playCardSoundForTutorial(iconType);
   }
 
- void _pressStartStep() {
-    _calculateHighlight(statusKey);
-    canTapHighlightedItem = true;
-    guidanceText = 'Você conheceu todos os sons! Agora, toque duas vezes no botão "Iniciar" para começar sua primeira partida.';
+  void _pressStartStep() {
+    // Não destacamos mais nada, para focar a atenção na mensagem e no botão.
+    highlightRect = null; 
+    canTapHighlightedItem = false;
+    
+    // Mudamos o texto para se referir ao novo botão.
+    guidanceText = 'Você conheceu todos os sons! Toque no botão "Finalizar Tutorial" para começar a jogar.';
     guidanceAlignment = Alignment.center;
-    _gameController.addListener(_onGameStarted);
-    _announce(guidanceText);
+
+    // O listener para o início do jogo não é mais necessário aqui.
+    // _gameController.addListener(_onGameStarted); // Removido
+    
     notifyListeners();
+
+    // Mantemos o delay para garantir que o anúncio não seja interrompido.
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (isTutorialActive && _currentStepIndex == _tutorialSteps.length - 1) {
+         _announce(guidanceText);
+      }
+    });
   }
   
   void _finishTutorial() {

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'audio_service.dart';
 
 
@@ -18,7 +17,7 @@ class GeniusGameController extends ChangeNotifier {
   final Random _random = Random();
 
   Timer? _inputTimer;
-  Timer? _countdownTimer; // NOVO: Timer para atualizar a UI a cada segundo
+  Timer? _countdownTimer;
 
   GeniusGameController({required AudioService audioService}) : _audioService = audioService;
 
@@ -32,12 +31,12 @@ class GeniusGameController extends ChangeNotifier {
   int _userInputIndex = 0;
   int _score = 0;
   String? _currentlyPlayingIcon;
-  int _countdown = 10; // NOVO: Variável para o contador regressivo
+  int _countdown = 20;
 
   GeniusGameState get gameState => _gameState;
   int get score => _score;
   String? get currentlyPlayingIcon => _currentlyPlayingIcon;
-  int get countdown => _countdown; // NOVO: Getter para a UI
+  int get countdown => _countdown;
 
   void startGame() {
     _score = 0;
@@ -60,8 +59,6 @@ class GeniusGameController extends ChangeNotifier {
     _userInputIndex = 0;
     _gameState = GeniusGameState.showingSequence;
     notifyListeners();
-    SemanticsService.announce("Observe a sequência...", TextDirection.ltr);
-
     _sequence.add(availableIcons[_random.nextInt(availableIcons.length)]);
     
     const double baseDuration = 800;
@@ -87,14 +84,13 @@ class GeniusGameController extends ChangeNotifier {
 
     _gameState = GeniusGameState.waitingForInput;
     notifyListeners();
-    SemanticsService.announce("Sua vez!", TextDirection.ltr);
     _startInputTimer();
   }
 
   void handlePlayerInput(String iconType) {
     if (_gameState != GeniusGameState.waitingForInput) return;
     
-    _cancelTimers(); // Cancela ambos os timers ao receber input
+    _cancelTimers(); 
     _playIconSound(iconType);
 
     if (_sequence[_userInputIndex] == iconType) {
@@ -116,25 +112,22 @@ class GeniusGameController extends ChangeNotifier {
     _cancelTimers();
     _gameState = GeniusGameState.gameOver;
     _audioService.playAudio('assets/sounds/error.mp3');
-    SemanticsService.announce("Fim de Jogo! Pontuação final: $_score", TextDirection.ltr);
     notifyListeners();
   }
 
   void _startInputTimer() {
     _cancelTimers();
-    _countdown = 10; // Reseta o contador
+    _countdown = 20;
     notifyListeners();
 
-    // Timer principal que define o game over
-    _inputTimer = Timer(const Duration(seconds: 10), _gameOver);
+    _inputTimer = Timer(const Duration(seconds: 20), _gameOver);
 
-    // Timer secundário que atualiza a UI a cada segundo
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdown > 0) {
         _countdown--;
         notifyListeners();
       } else {
-        timer.cancel(); // Para o timer da UI quando chegar a zero
+        timer.cancel();
       }
     });
   }

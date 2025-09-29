@@ -1,8 +1,7 @@
-
 import 'package:flutter/material.dart';
 
-class AboutScreen extends StatelessWidget {
-  const AboutScreen({super.key});
+class MemoryGameAboutScreen extends StatelessWidget {
+  const MemoryGameAboutScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +19,6 @@ class AboutScreen extends StatelessWidget {
           children: [
             _buildInfoCard(context),
             const SizedBox(height: 20),
-            
             _buildSupportCard(),
           ],
         ),
@@ -39,9 +37,10 @@ class AboutScreen extends StatelessWidget {
           children: [
             const Center(
               child: Text(
-                'Mathnew',
+                'Jogo da Memória',
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: Colors.blueAccent,
                 ),
@@ -49,7 +48,7 @@ class AboutScreen extends StatelessWidget {
             ),
             const Center(
               child: Text(
-                'Versão 1.3',
+                'Versão 1.0',
                 style: TextStyle(
                   fontSize: 16,
                   fontStyle: FontStyle.italic,
@@ -58,24 +57,33 @@ class AboutScreen extends StatelessWidget {
               ),
             ),
             const Divider(height: 30),
-            _buildSectionTitle('O que é o App?'),
+            _buildSectionTitle('O que é?'),
             const Text(
-              'O Mathnew é uma ferramenta educacional que transforma a composição musical em uma atividade visual e interativa.',
+              'Um jogo de memória auditiva e visual: observe a sequência de sons/ícones e repita na mesma ordem. '
+              'A cada nível a sequência cresce e o desafio aumenta.',
               style: TextStyle(fontSize: 16, height: 1.4),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             _buildSectionTitle('Principais Funcionalidades'),
-            _buildFeatureItem(Icons.grid_on, 'Criação Visual:', 'Arraste o beija-flor pela grade e adicione ícones de ação (palmas, assobios, batidas) para construir sua sequência rítmica.'),
-            _buildFeatureItem(Icons.play_circle_outline, 'Reprodução Instantânea:', 'Toque "Play" para ver o beija-flor percorrer sua criação, tocando cada som em ordem.'),
-            _buildFeatureItem(Icons.save, 'Salve e Reutilize:', 'Guarde suas sequências favoritas e aplique-as em diferentes linhas para criar composições mais complexas.'),
-            _buildFeatureItem(Icons.accessibility_new, 'Personalização e Acessibilidade:', 'Escolha seu personagem, ajuste o tamanho dos ícones e utilize o joystick para uma navegação facilitada.'),
+            _buildFeatureItem(Icons.visibility_outlined, 'Observe a sequência:',
+                'os cartões são destacados um a um e seus sons são reproduzidos automaticamente para você memorizar a ordem.'),
+            _buildFeatureItem(Icons.touch_app_outlined, 'Repita na sua vez:',
+                'quando a exibição termina, toque nos cartões na mesma ordem apresentada. Um cronômetro no topo indica o tempo restante.'),
+            _buildFeatureItem(
+                Icons.trending_up_outlined,
+                'Progressão de níveis:',
+                'a cada acerto a sequência ganha um novo som, aumentando gradualmente a dificuldade e sua pontuação.'),
+            _buildFeatureItem(
+                Icons.volume_up_outlined,
+                'Feedback sonoro e visual:',
+                'cada cartão possui um som próprio (palmas, assobio, batidas, etc.) e realce visual durante a exibição e a sua jogada.'),
+            _buildFeatureItem(Icons.accessibility_new, 'Acessibilidade:',
+                'indicadores de estado são anunciados por leitor de tela (ex.: “Observe a sequência”, “Sua vez”) e os cartões têm rótulos semânticos claros.'),
           ],
         ),
       ),
     );
   }
-
-  
 
   Widget _buildSupportCard() {
     return Card(
@@ -88,14 +96,18 @@ class AboutScreen extends StatelessWidget {
             _buildSectionTitle('Apoio Institucional'),
             const SizedBox(height: 15),
             Semantics(
-              label: 'Logotipos dos apoiadores: IFSP, CNPQ e RUMO à Educação Matemática Inclusiva',
+              label:
+                  'Logotipos dos apoiadores: IFSP, CNPQ e RUMO à Educação Matemática Inclusiva',
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Image.asset('assets/images/IFSP_Logo.png', height: 60, fit: BoxFit.contain),
-                  Image.asset('assets/images/CNPQ_Logo.png', height: 60, fit: BoxFit.contain),
-                  Image.asset('assets/images/RUMO_Logo.png', height: 60, fit: BoxFit.contain),
+                  Image.asset('assets/images/IFSP_Logo.png',
+                      height: 60, fit: BoxFit.contain),
+                  Image.asset('assets/images/CNPQ_Logo.png',
+                      height: 60, fit: BoxFit.contain),
+                  Image.asset('assets/images/RUMO_Logo.png',
+                      height: 60, fit: BoxFit.contain),
                 ],
               ),
             ),
@@ -130,10 +142,13 @@ class AboutScreen extends StatelessWidget {
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: const TextStyle(fontSize: 15, color: Colors.black87, height: 1.3),
+                style: const TextStyle(
+                    fontSize: 15, color: Colors.black87, height: 1.3),
                 children: [
-                  TextSpan(text: title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  TextSpan(text: ' $description'),
+                  TextSpan(
+                      text: '$title ',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: description),
                 ],
               ),
             ),
