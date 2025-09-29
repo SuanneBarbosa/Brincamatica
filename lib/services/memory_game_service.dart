@@ -1,0 +1,171 @@
+import 'dart:async';
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'audio_service.dart';
+
+
+enum GeniusGameState {
+  notStarted,
+  showingSequence,
+  waitingForInput,
+  levelComplete,
+  gameOver,
+}
+
+class GeniusGameController extends ChangeNotifier {
+  final AudioService _audioService;
+  final Random _random = Random();
+
+  Timer? _inputTimer;
+  Timer? _countdownTimer; // NOVO: Timer para atualizar a UI a cada segundo
+
+  GeniusGameController({required AudioService audioService}) : _audioService = audioService;
+
+  final List<String> availableIcons = [
+     "BaterPalma", "BaterPe",
+    "BaterPeito", "BaterPerna", "Gritar", "Beijo"
+  ];
+
+  GeniusGameState _gameState = GeniusGameState.notStarted;
+  List<String> _sequence = [];
+  int _userInputIndex = 0;
+  int _score = 0;
+  String? _currentlyPlayingIcon;
+  int _countdown = 10; // NOVO: Variável para o contador regressivo
+
+  GeniusGameState get gameState => _gameState;
+  int get score => _score;
+  String? get currentlyPlayingIcon => _currentlyPlayingIcon;
+  int get countdown => _countdown; // NOVO: Getter para a UI
+
+  void startGame() {
+    _score = 0;
+    _sequence = [];
+    _gameState = GeniusGameState.showingSequence;
+    notifyListeners();
+    _nextLevel();
+  }
+
+  void resetGame() {
+    _cancelTimers();
+    _gameState = GeniusGameState.notStarted;
+    _score = 0;
+    _sequence = [];
+    _userInputIndex = 0;
+    notifyListeners();
+  }
+
+  void _nextLevel() async {
+    _userInputIndex = 0;
+    _gameState = GeniusGameState.showingSequence;
+    notifyListeners();
+    SemanticsService.announce("Observe a sequência...", TextDirection.ltr);
+
+    _sequence.add(availableIcons[_random.nextInt(availableIcons.length)]);
+    
+    const double baseDuration = 800;
+    const double minDuration = 250;
+    const double speedIncreaseFactor = 25;
+    
+    final currentDuration = (baseDuration - (_score * speedIncreaseFactor)).clamp(minDuration, baseDuration);
+    final showDuration = Duration(milliseconds: currentDuration.toInt());
+    final gapDuration = Duration(milliseconds: (currentDuration * 0.25).toInt());
+
+    await Future.delayed(const Duration(milliseconds: 1000));
+
+    for (final iconType in _sequence) {
+      if (_gameState != GeniusGameState.showingSequence) return;
+      _currentlyPlayingIcon = iconType;
+      notifyListeners();
+      _playIconSound(iconType);
+      await Future.delayed(showDuration);
+      _currentlyPlayingIcon = null;
+      notifyListeners();
+      await Future.delayed(gapDuration);
+    }
+
+    _gameState = GeniusGameState.waitingForInput;
+    notifyListeners();
+    SemanticsService.announce("Sua vez!", TextDirection.ltr);
+    _startInputTimer();
+  }
+
+  void handlePlayerInput(String iconType) {
+    if (_gameState != GeniusGameState.waitingForInput) return;
+    
+    _cancelTimers(); // Cancela ambos os timers ao receber input
+    _playIconSound(iconType);
+
+    if (_sequence[_userInputIndex] == iconType) {
+      _userInputIndex++;
+      if (_userInputIndex == _sequence.length) {
+        _score++;
+        _gameState = GeniusGameState.levelComplete;
+        notifyListeners();
+        Future.delayed(const Duration(milliseconds: 1500), _nextLevel);
+      } else {
+         _startInputTimer();
+      }
+    } else {
+      _gameOver();
+    }
+  }
+
+  void _gameOver() {
+    _cancelTimers();
+    _gameState = GeniusGameState.gameOver;
+    _audioService.playAudio('assets/sounds/error.mp3');
+    SemanticsService.announce("Fim de Jogo! Pontuação final: $_score", TextDirection.ltr);
+    notifyListeners();
+  }
+
+  void _startInputTimer() {
+    _cancelTimers();
+    _countdown = 10; // Reseta o contador
+    notifyListeners();
+
+    // Timer principal que define o game over
+    _inputTimer = Timer(const Duration(seconds: 10), _gameOver);
+
+    // Timer secundário que atualiza a UI a cada segundo
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_countdown > 0) {
+        _countdown--;
+        notifyListeners();
+      } else {
+        timer.cancel(); // Para o timer da UI quando chegar a zero
+      }
+    });
+  }
+
+  void _cancelTimers() {
+    _inputTimer?.cancel();
+    _countdownTimer?.cancel();
+  }
+
+   void playCardSoundForTutorial(String type) {
+    _playIconSound(type);
+  }
+
+  void _playIconSound(String type) {
+    String? soundPath;
+    switch (type) {
+      case "BaterPalma": soundPath = 'assets/sounds/baterPalma.mp3'; break;
+      case "BaterPeito": soundPath = 'assets/sounds/baterPeito.mp3'; break;
+      case "BaterPerna": soundPath = 'assets/sounds/baterPerna.mp3'; break;
+      case "BaterPe": soundPath = 'assets/sounds/baterPes.mp3'; break;
+      case "Gritar": soundPath = 'assets/sounds/gritar.mp3'; break;
+      case "Beijo": soundPath = 'assets/sounds/beijo.mp3'; break;
+    }
+    if (soundPath != null) {
+      _audioService.playAudio(soundPath);
+    }
+  }
+
+  @override
+  void dispose() {
+    _cancelTimers();
+    super.dispose();
+  }
+}

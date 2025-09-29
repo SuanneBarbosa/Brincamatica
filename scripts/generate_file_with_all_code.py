@@ -21,6 +21,6 @@ def consolidate_flutter_project(project_dir, output_file):
                         outfile.write("\n----------------\n")
 
 if __name__ == "__main__":
-    project_directory = "C:\\Users\\suann\\projetos-flutter\\mathnew_app\\mathnew\\lib"
+    project_directory = "C:\\Users\\suann\\projetos-flutter\\mathnew_app\\lib"
     output_file_name = "codigo_consolidado.txt"
     consolidate_flutter_project(project_directory, output_file_name)

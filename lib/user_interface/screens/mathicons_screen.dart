@@ -29,14 +29,13 @@ class _MathiconState extends State<Mathicon> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     
   }
 
   @override
   void dispose() {
     _drawerScrollController.dispose();
-    context.read<PlaybackController>().stop();
+    //context.read<PlaybackController>().stop();
     super.dispose();
   }
 
@@ -279,6 +278,20 @@ class _MathiconState extends State<Mathicon> {
                     ],
                   ),
                 ),
+                 ListTile(
+                  leading: const Icon(Icons.home_filled, color: Colors.blue),
+                  title: Semantics(
+                    label: 'Voltar ao Menu para escolher um jogo',
+                    button: true,
+                    child: const Text("Escolha o jogo"),
+                  ),
+                  onTap: () {
+                   context.read<PlaybackController>().stop();
+                    Navigator.pop(context); 
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                ),
+                const Divider(),
                 SwitchListTile(
                   title: Semantics(
                     label: 'Botões de controle de movimentos',

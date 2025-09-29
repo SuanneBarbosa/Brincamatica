@@ -1,18 +1,21 @@
-
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Importe para o SystemChrome
 import 'package:provider/provider.dart';
 import '../../services/character_service.dart';
+import 'memory_game_screen.dart';
 import 'mathicons_screen.dart';
-import 'package:flutter/foundation.dart';
+import 'melody_generator_screen.dart';
+// Removido 'package:flutter/foundation.dart' pois kIsWeb não é mais usado aqui
+
+enum GameMode { creation, genius, generator}
 
 class CharacterSelectionScreen extends StatefulWidget {
-  const CharacterSelectionScreen({super.key});
+  final GameMode gameMode;
+  const CharacterSelectionScreen({super.key, required this.gameMode});
 
   @override
   State<CharacterSelectionScreen> createState() => _CharacterSelectionScreenState();
 }
-
 
 class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
   final List<String> characterTypes = const [
@@ -22,70 +25,7 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
     'girl_light',
   ];
 
- 
-  @override
-  void initState() {
-    super.initState();
-     if (!kIsWeb) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _mostrarDialogoOrientacao(context);
-      });
-    }
-  }
-
- 
-  Future<void> _mostrarDialogoOrientacao(BuildContext context) async {
-    const String titulo = 'Aviso: Orientação do Dispositivo.';
-    const String conteudo =
-        'Antes de utilizar o aplicativo, posicione o celular na sua mão, em modo paisagem, girando no sentido anti-horário.';
-    const String acao = 'Toque no botão OK para fechar este aviso.';
-
-    const String fullSemanticLabel = '$titulo $conteudo $acao';
-
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          semanticLabel: fullSemanticLabel,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0),
-          ),
-          title: const ExcludeSemantics(
-            child: Text(
-              'Orientação do Dispositivo',
-              textAlign: TextAlign.center,
-            ),
-          ),
-          content: const SingleChildScrollView(
-            child: Text(
-              conteudo,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
-            ),
-          ),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: <Widget>[
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 50, vertical: 10),
-                textStyle:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0)),
-              ),
-              child: const Text('OK'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
+  
   String _getCharacterImagePath(String type) {
     return 'assets/images/characters/character_$type.png';
   }
@@ -102,7 +42,6 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
     return 'Erro ao carregar imagem do personagem $gender, $tone.';
   }
 
-  
   @override
   Widget build(BuildContext context) {
     final characterController = context.read<CharacterController>();
@@ -134,16 +73,27 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
                   children: characterTypes.map((type) {
                     return Expanded(
                       child: Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: itemSpacing / 2),
+                        padding: const EdgeInsets.symmetric(horizontal: itemSpacing / 2),
                         child: GestureDetector(
                           onTap: () {
                             characterController.setSelectedCharacter(type);
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => const Mathicon()),
-                            );
+
+                          if (widget.gameMode == GameMode.creation) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => const Mathicon()),
+                              );
+                            } else if (widget.gameMode == GameMode.genius) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => const MemoryGameScreen()),
+                              );
+                            } else { // Novo caso para o Gerador de Melodias
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => const MelodyGeneratorScreen()),
+                              );
+                            }
                           },
                           child: Semantics(
                             label: _getCharacterSemanticsLabel(type),
@@ -161,10 +111,8 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
                                     child: Image.asset(
                                       _getCharacterImagePath(type),
                                       fit: BoxFit.contain,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                        print(
-                                            "Erro ao carregar imagem de seleção: ${_getCharacterImagePath(type)}\n$error");
+                                      errorBuilder: (context, error, stackTrace) {
+                                        print("Erro ao carregar imagem de seleção: ${_getCharacterImagePath(type)}\n$error");
                                         return Semantics(
                                           label: _getErrorSemanticsLabel(type),
                                           image: true,
