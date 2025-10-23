@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart'; // <-- ADICIONE ESTE IMPORT
+import 'package:provider/provider.dart';
 import 'audio_service.dart';
+import 'score_history_service.dart';
 
 
 enum GeniusGameState {
   notStarted,
   showingSequence,
+  playerTurn,
   waitingForInput,
   levelComplete,
   gameOver,
@@ -31,19 +35,19 @@ class GeniusGameController extends ChangeNotifier {
   int _userInputIndex = 0;
   int _score = 0;
   String? _currentlyPlayingIcon;
-  int _countdown = 20;
+  int _countdown = 10;
 
   GeniusGameState get gameState => _gameState;
   int get score => _score;
   String? get currentlyPlayingIcon => _currentlyPlayingIcon;
   int get countdown => _countdown;
 
-  void startGame() {
+  void startGame(BuildContext context) {
     _score = 0;
     _sequence = [];
     _gameState = GeniusGameState.showingSequence;
     notifyListeners();
-    _nextLevel();
+    _nextLevel(context);
   }
 
   void resetGame() {
@@ -55,7 +59,7 @@ class GeniusGameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _nextLevel() async {
+  void _nextLevel(BuildContext context) async {
     _userInputIndex = 0;
     _gameState = GeniusGameState.showingSequence;
     notifyListeners();
@@ -82,12 +86,25 @@ class GeniusGameController extends ChangeNotifier {
       await Future.delayed(gapDuration);
     }
 
+     // ====================== MUDANÇA AQUI ======================
+    // 1. Mude para o estado intermediário "playerTurn"
+    _gameState = GeniusGameState.playerTurn;
+    notifyListeners();
+
+    // 2. Aguarde um momento para que o jogador veja a mensagem "Sua vez!"
+    //    Você pode ajustar a duração (ex: 1200 para 1.2 segundos).
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    // 3. Verifique se o jogo não foi interrompido durante a pausa
+    if (_gameState != GeniusGameState.playerTurn) return;
+
+    // 4. Agora, mude para o estado de espera e inicie o timer.
     _gameState = GeniusGameState.waitingForInput;
     notifyListeners();
-    _startInputTimer();
+    _startInputTimer(context: context, seconds: 10);
   }
 
-  void handlePlayerInput(String iconType) {
+  void handlePlayerInput(String iconType, BuildContext context) {
     if (_gameState != GeniusGameState.waitingForInput) return;
     
     _cancelTimers(); 
@@ -99,28 +116,43 @@ class GeniusGameController extends ChangeNotifier {
         _score++;
         _gameState = GeniusGameState.levelComplete;
         notifyListeners();
-        Future.delayed(const Duration(milliseconds: 1500), _nextLevel);
+        Future.delayed(const Duration(milliseconds: 1500), () => _nextLevel(context));
       } else {
-         _startInputTimer();
+         _startInputTimer(context: context, seconds: 3);
       }
     } else {
-      _gameOver();
+      _gameOver(context);
     }
   }
 
-  void _gameOver() {
+  void _gameOver(BuildContext context) {
     _cancelTimers();
     _gameState = GeniusGameState.gameOver;
+    
+    context.read<ScoreHistoryService>().addScoreEntry(_score, _score + 1);
+
     _audioService.playAudio('assets/sounds/error.mp3');
+
+    // ====================== MUDANÇA AQUI ======================
+    // Criamos a mensagem que será anunciada pelo leitor de tela.
+    final String announcement = "Fim de Jogo! Você alcançou o nível ${_score + 1} e sua pontuação foi ${_score}. Toque no botão Jogar Novamente para iniciar um novo jogo.";
+    
+    // Usamos um pequeno atraso para garantir que o som de erro não
+    // interrompa o anúncio do TalkBack.
+    Future.delayed(const Duration(milliseconds: 200), () {
+      SemanticsService.announce(announcement, TextDirection.ltr);
+    });
+    // ==========================================================
+
     notifyListeners();
   }
 
-  void _startInputTimer() {
+  void _startInputTimer({required BuildContext context, int seconds = 10}) {
     _cancelTimers();
-    _countdown = 20;
+    _countdown = seconds;
     notifyListeners();
 
-    _inputTimer = Timer(const Duration(seconds: 20), _gameOver);
+    _inputTimer = Timer(Duration(seconds: seconds), () => _gameOver(context));
 
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdown > 0) {

@@ -1,13 +1,11 @@
+import 'package:Mathnew/services/melody_generator_service.dart';
+import 'package:Mathnew/services/score_history_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-// NOVOS IMPORTS PARA VERIFICAÇÃO DE PLATAFORMA
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
-
-// Seus imports existentes
 import 'services/memory_game_service.dart';
-import 'user_interface/screens/home_screen.dart'; 
 import 'services/character_service.dart';
 import 'services/icon_service.dart';
 import 'services/saved_row_service.dart';
@@ -16,24 +14,20 @@ import 'services/playback_service.dart';
 import 'services/orientation_service.dart';
 import 'user_interface/screens/orientation_screen.dart';
 import 'services/memory_tutorial_service.dart';
+import 'user_interface/screens/character_selection_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Função para verificar se a plataforma é mobile
   bool isMobilePlatform() {
     if (kIsWeb) {
-      return false; // Não é mobile se for web
+      return false; 
     }
-    // Verifica se é um SO de desktop
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       return false;
     }
-    // Assume que o resto (Android, iOS, Fuchsia) é mobile
     return true;
   }
 
-  // A orientação da tela só deve ser forçada em plataformas móveis
   if (isMobilePlatform()) {
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -45,15 +39,14 @@ void main() async {
 
   final audioService = AudioService();
   
-  // ====================== MUDANÇA AQUI ======================
-  bool orientationShown = true; // Assume por padrão que a tela não precisa ser mostrada
+  
+  bool orientationShown = true; 
 
-  // Só verifica e mostra a tela de orientação se for uma plataforma móvel
+ 
   if (isMobilePlatform()) {
     final orientationService = OrientationService();
     orientationShown = await orientationService.hasShownOrientation();
   }
-  // ==========================================================
 
   runApp(Main(audioService: audioService, orientationShown: orientationShown));
 }
@@ -85,11 +78,15 @@ class Main extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => MemoryTutorialController(),
         ),
+         ChangeNotifierProvider(
+          create: (_) => MelodyGeneratorController(audioService: audioService),
+        ),
+         ChangeNotifierProvider(create: (_) => ScoreHistoryService()),
       ],
       child: MaterialApp(
         title: 'MathIcon',
         debugShowCheckedModeBanner: false,
-        home: orientationShown ? const HomeScreen() : const OrientationScreen(),
+        home: orientationShown ? const CharacterSelectionScreen(isInitialSelection: true)  : const OrientationScreen(),
       ),
     );
   }

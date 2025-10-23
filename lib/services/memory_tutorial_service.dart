@@ -3,33 +3,31 @@ import 'package:flutter/semantics.dart';
 import 'memory_game_service.dart';
 import 'orientation_service.dart';
 
-// Enum removido, usaremos uma lista de passos para mais flexibilidade
-
 class MemoryTutorialController extends ChangeNotifier {
   // --- Estado do Tutorial ---
-  int _currentStepIndex = -1; // Começa antes do primeiro passo
-  List<Function> _tutorialSteps = []; // Lista de funções, cada uma representa um passo
+  int _currentStepIndex = -1;
+  List<Function> _tutorialSteps = [];
   bool get isTutorialActive => _currentStepIndex < _tutorialSteps.length;
-  // NOVO: Getter para saber qual o passo atual
   int get currentStepIndex => _currentStepIndex;
   int get totalSteps => _tutorialSteps.length;
+  
+  // <-- NOVA PROPRIEDADE para rastrear qual card está ativo no tutorial -->
+  String? activeCardTutorialType;
 
 
   // --- Chaves e Destaques ---
-  final Map<String, GlobalKey> cardKeys = {}; // Um mapa de chaves para cada tipo de card
+  final Map<String, GlobalKey> cardKeys = {};
   final statusKey = GlobalKey();
   Rect? highlightRect;
   String guidanceText = '';
   Alignment guidanceAlignment = Alignment.center;
-  bool canTapHighlightedItem = false; // Controla se o item destacado pode ser tocado
+  bool canTapHighlightedItem = false;
 
   // --- Referências Externas ---
   late GeniusGameController _gameController;
   final OrientationService _orientationService = OrientationService();
   
-  // Construtor para inicializar as chaves dos cards
   MemoryTutorialController() {
-    // Esses nomes devem corresponder EXATAMENTE aos nomes em 'availableIcons' no GeniusGameController
     final iconTypes = ["BaterPalma", "BaterPe", "BaterPeito", "BaterPerna", "Gritar", "Beijo"];
     for (var type in iconTypes) {
       cardKeys[type] = GlobalKey();
@@ -38,27 +36,24 @@ class MemoryTutorialController extends ChangeNotifier {
 
   void start(BuildContext context, GeniusGameController gameController) {
     _gameController = gameController;
-    _buildTutorialSequence(); // Monta a sequência de passos
-    nextStep(); // Inicia o primeiro passo
+    _buildTutorialSequence();
+    nextStep();
   }
   
-  // Monta a sequência de passos do tutorial
   void _buildTutorialSequence() {
     _tutorialSteps = [
       _welcomeStep,
       _highlightStatusStep,
       _explainTimerStep,
-      // Gera um passo de exploração para cada card
       ...cardKeys.keys.map((iconType) => () => _exploreCardStep(iconType)),
       _pressStartStep,
     ];
   }
 
-  // Avança para o próximo passo da sequência
   void nextStep() {
     _currentStepIndex++;
     if (isTutorialActive) {
-      _tutorialSteps[_currentStepIndex](); // Executa a função do passo atual
+      _tutorialSteps[_currentStepIndex]();
     } else {
       _finishTutorial();
     }
@@ -73,7 +68,7 @@ class MemoryTutorialController extends ChangeNotifier {
   void _welcomeStep() {
     highlightRect = null;
     canTapHighlightedItem = false;
-    // MUDANÇA NO TEXTO
+    activeCardTutorialType = null; // <-- Limpa o card ativo
     guidanceText = 'Bem-vindo ao Jogo da Memória! Para continuar, toque no botão "Começar" no canto inferior direito. Ou toque em "Pular Tutorial" no canto inferior esquerdo.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
@@ -83,18 +78,18 @@ class MemoryTutorialController extends ChangeNotifier {
   void _highlightStatusStep() {
     _calculateHighlight(statusKey);
     canTapHighlightedItem = false;
-    // MUDANÇA NO TEXTO
-    guidanceText = 'No painel superior, aparecerão as instruções como "Observe a sequência" ou "Sua vez", além da sua pontuação. Toque no botão "Próximo", no canto inferior direito da tela para continuar.';
+    activeCardTutorialType = null; // <-- Limpa o card ativo
+    guidanceText = 'No painel superior, aparecerão as instruções como "Ouça a sequência." ou "Sua vez" e o botão Iniciar para começar o jogo. Toque no botão "Próximo", no canto inferior direito da tela para continuar.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
   }
   
   void _explainTimerStep() {
-    _calculateHighlight(statusKey); // Mantém o destaque na barra de status
+    _calculateHighlight(statusKey);
     canTapHighlightedItem = false;
-    // MUDANÇA NO TEXTO
-    guidanceText = 'Quando for a sua vez, um timer de 10 segundos aparecerá neste painel. Se não responder a tempo, o jogo termina. Toque no botão "Próximo" para continuar.';
+    activeCardTutorialType = null; // <-- Limpa o card ativo
+    guidanceText = 'Quando for a sua vez, um timer aparecerá. Você terá 10 segundos para o primeiro toque da sequência. Para os toques seguintes na mesma rodada, o tempo será de 3 segundos. Se não responder a tempo, o jogo termina. Toque no botão "Próximo" para continuar.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
@@ -103,9 +98,9 @@ class MemoryTutorialController extends ChangeNotifier {
  void _exploreCardStep(String iconType) {
     _calculateHighlight(cardKeys[iconType]!);
     canTapHighlightedItem = true;
+    activeCardTutorialType = iconType; // <-- Define o card ativo
     
     String cardName = _getSemanticsLabelFromType(iconType);
-    // MUDANÇA NO TEXTO
     guidanceText = 'Agora vá até o botão "$cardName" e toque duas vezes nele para ouvir seu som. Quando estiver pronto, toque no botão "Próximo" para ouvir o próximo som.';
     guidanceAlignment = Alignment.topCenter;
     _announce(guidanceText);
@@ -117,20 +112,15 @@ class MemoryTutorialController extends ChangeNotifier {
   }
 
   void _pressStartStep() {
-    // Não destacamos mais nada, para focar a atenção na mensagem e no botão.
     highlightRect = null; 
     canTapHighlightedItem = false;
+    activeCardTutorialType = null; // <-- Limpa o card ativo
     
-    // Mudamos o texto para se referir ao novo botão.
     guidanceText = 'Você conheceu todos os sons! Toque no botão "Finalizar Tutorial" para começar a jogar.';
     guidanceAlignment = Alignment.center;
-
-    // O listener para o início do jogo não é mais necessário aqui.
-    // _gameController.addListener(_onGameStarted); // Removido
     
     notifyListeners();
 
-    // Mantemos o delay para garantir que o anúncio não seja interrompido.
     Future.delayed(const Duration(milliseconds: 150), () {
       if (isTutorialActive && _currentStepIndex == _tutorialSteps.length - 1) {
          _announce(guidanceText);
@@ -139,9 +129,10 @@ class MemoryTutorialController extends ChangeNotifier {
   }
   
   void _finishTutorial() {
-    _currentStepIndex = _tutorialSteps.length; // Garante que isTutorialActive seja false
+    _currentStepIndex = _tutorialSteps.length;
     highlightRect = null;
     guidanceText = '';
+    activeCardTutorialType = null; // <-- Limpa o card ativo
     _gameController.removeListener(_onGameStarted);
     _orientationService.markMemoryGameTutorialAsShown();
     _announce("Tutorial finalizado. Bom jogo!");
@@ -167,12 +158,10 @@ class MemoryTutorialController extends ChangeNotifier {
     }
   }
   
-  // Função para anunciar ao TalkBack
   void _announce(String message) {
     SemanticsService.announce(message, TextDirection.ltr);
   }
 
-  // Copiada para obter o nome para o anúncio
   String _getSemanticsLabelFromType(String type) {
     switch (type) {
       case "BaterPe": return "Bater Pé";

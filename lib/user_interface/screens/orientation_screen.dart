@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/orientation_service.dart';
-// IMPORTE A HOMESCREEN
-import 'home_screen.dart';
+import 'character_selection_screen.dart';
 
 class OrientationScreen extends StatelessWidget {
   const OrientationScreen({super.key});
@@ -12,7 +11,7 @@ class OrientationScreen extends StatelessWidget {
     if (context.mounted) {
       // MUDE A NAVEGAÇÃO PARA A HOMESCREEN
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) =>  const CharacterSelectionScreen(isInitialSelection: true)),
       );
     }
   }

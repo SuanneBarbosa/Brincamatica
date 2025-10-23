@@ -1,15 +1,13 @@
 [main.dart]
 
+import 'package:Mathnew/services/melody_generator_service.dart';
+import 'package:Mathnew/services/score_history_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-// NOVOS IMPORTS PARA VERIFICAÇÃO DE PLATAFORMA
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
-
-// Seus imports existentes
 import 'services/memory_game_service.dart';
-import 'user_interface/screens/home_screen.dart'; 
 import 'services/character_service.dart';
 import 'services/icon_service.dart';
 import 'services/saved_row_service.dart';
@@ -18,24 +16,20 @@ import 'services/playback_service.dart';
 import 'services/orientation_service.dart';
 import 'user_interface/screens/orientation_screen.dart';
 import 'services/memory_tutorial_service.dart';
+import 'user_interface/screens/character_selection_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Função para verificar se a plataforma é mobile
   bool isMobilePlatform() {
     if (kIsWeb) {
-      return false; // Não é mobile se for web
+      return false; 
     }
-    // Verifica se é um SO de desktop
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       return false;
     }
-    // Assume que o resto (Android, iOS, Fuchsia) é mobile
     return true;
   }
 
-  // A orientação da tela só deve ser forçada em plataformas móveis
   if (isMobilePlatform()) {
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -47,15 +41,14 @@ void main() async {
 
   final audioService = AudioService();
   
-  // ====================== MUDANÇA AQUI ======================
-  bool orientationShown = true; // Assume por padrão que a tela não precisa ser mostrada
+  
+  bool orientationShown = true; 
 
-  // Só verifica e mostra a tela de orientação se for uma plataforma móvel
+ 
   if (isMobilePlatform()) {
     final orientationService = OrientationService();
     orientationShown = await orientationService.hasShownOrientation();
   }
-  // ==========================================================
 
   runApp(Main(audioService: audioService, orientationShown: orientationShown));
 }
@@ -87,11 +80,15 @@ class Main extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => MemoryTutorialController(),
         ),
+         ChangeNotifierProvider(
+          create: (_) => MelodyGeneratorController(audioService: audioService),
+        ),
+         ChangeNotifierProvider(create: (_) => ScoreHistoryService()),
       ],
       child: MaterialApp(
         title: 'MathIcon',
         debugShowCheckedModeBanner: false,
-        home: orientationShown ? const HomeScreen() : const OrientationScreen(),
+        home: orientationShown ? const CharacterSelectionScreen(isInitialSelection: true)  : const OrientationScreen(),
       ),
     );
   }
@@ -151,35 +148,85 @@ class SavedRow {
        );
 }
 ----------------
+[models\score_history_model.dart]
+
+class ScoreHistoryEntry {
+  final int score;
+  final int level;
+  final DateTime date;
+
+  ScoreHistoryEntry({
+    required this.score,
+    required this.level,
+    required this.date,
+  });
+
+  
+  Map<String, dynamic> toJson() => {
+        'score': score,
+        'level': level,
+        'date': date.toIso8601String(), 
+      };
+
+ 
+  factory ScoreHistoryEntry.fromJson(Map<String, dynamic> json) => ScoreHistoryEntry(
+        score: json['score'] as int,
+        level: json['level'] as int,
+        date: DateTime.parse(json['date'] as String), 
+      );
+}
+----------------
 [services\audio_service.dart]
+
+// services/audio_service.dart
 
 import 'package:just_audio/just_audio.dart';
 
 class AudioService {
-  final AudioPlayer _audioPlayer = AudioPlayer(); 
+  // <<< ALTERAÇÃO: Renomeado para mais clareza >>>
+  final AudioPlayer _mainPlayer = AudioPlayer(); 
   
+  // <<< NOVO: Um player separado para sons de feedback >>>
+  final AudioPlayer _feedbackPlayer = AudioPlayer();
 
+  // Este método continuará sendo usado para os sons dos ícones do jogo
   Future<void> playAudio(String assetPath) async {
     try {
-      await _audioPlayer.setAsset(assetPath);
-      await _audioPlayer.play();
+      // Garante que o player não esteja tocando outra coisa antes de carregar o novo som
+      if (_mainPlayer.playing) {
+        await _mainPlayer.stop();
+      }
+      await _mainPlayer.setAsset(assetPath);
+      await _mainPlayer.play();
     } catch (e) {
-      print("Erro ao tocar áudio: $e");
+      print("Erro ao tocar áudio principal: $e");
+    }
+  }
+  
+  // <<< NOVO: Método para tocar sons de feedback (certo/errado) sem interromper os outros >>>
+  Future<void> playFeedbackAudio(String assetPath) async {
+    try {
+      await _feedbackPlayer.setAsset(assetPath);
+      await _feedbackPlayer.play();
+    } catch (e) {
+      print("Erro ao tocar áudio de feedback: $e");
     }
   }
 
+
   Future<void> stopAudio() async {
     try {
-      await _audioPlayer.stop();
+      await _mainPlayer.stop();
     } catch (e) {
       print("Erro ao parar áudio: $e");
     }
   }
+
   void dispose() {
-    _audioPlayer.dispose(); 
+    _mainPlayer.dispose(); 
+    _feedbackPlayer.dispose(); // <<< ALTERAÇÃO: Não se esqueça de liberar o novo player também!
   }
 }
-
 ----------------
 [services\character_service.dart]
 
@@ -684,16 +731,37 @@ class IconController extends ChangeNotifier {
 [services\melody_generator_service.dart]
 
 // lib/services/melody_generator_service.dart
-
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:collection/collection.dart'; // Adicione esta importação para comparar listas
 import 'audio_service.dart';
 
-// Enum para controlar o estado da tela do jogo
+// --- NOVO: Classe para modelar cada nível do jogo ---
+class GameLevel {
+  final int iconCount;
+  final bool withRepetition;
+  final bool hasHint; // Define se o primeiro ícone é mostrado ou se são todos '?'
+
+  GameLevel({
+    required this.iconCount,
+    required this.withRepetition,
+    this.hasHint = true,
+  });
+}
+
+// --- ATUALIZADO: Adicionado 'playingLevels' e 'levelComplete' ---
 enum GeneratorState {
   selectingIcons,
   selectingMode,
-  displayingResults,
+  playingFreePlay, // Renomeado de playingGame para clareza
+  playingLevels,   // Novo estado para o modo de desafio
+  levelComplete,   // Estado intermediário para mostrar feedback
+  gameWon,
+}
+
+enum ValidationState {
+  neutral,
+  correct,
+  incorrect,
 }
 
 class MelodyGeneratorController extends ChangeNotifier {
@@ -702,20 +770,55 @@ class MelodyGeneratorController extends ChangeNotifier {
   MelodyGeneratorController({required AudioService audioService})
       : _audioService = audioService;
 
+  // --- Definição dos Níveis do Jogo ---
+  final List<GameLevel> _levels = [
+    // Bloco 1: Sem Repetição
+    GameLevel(iconCount: 2, withRepetition: false, hasHint: true),  // Nível 1: Dois ícones sem repetição com dica
+    GameLevel(iconCount: 3, withRepetition: false, hasHint: true),  // Nível 2: Três ícones sem repetição com dica
+    GameLevel(iconCount: 2, withRepetition: false, hasHint: false), // Nível 3: Dois ícones sem repetição sem dica
+    GameLevel(iconCount: 3, withRepetition: false, hasHint: false), // Nível 4: Três ícones sem repetição sem dica
+
+    // Bloco 2: Com Repetição
+    GameLevel(iconCount: 2, withRepetition: true, hasHint: true),   // Nível 5: Dois ícones com repetição com dica
+    GameLevel(iconCount: 3, withRepetition: true, hasHint: true),   // Nível 6: Três ícones com repetição com dica
+    GameLevel(iconCount: 2, withRepetition: true, hasHint: false),  // Nível 7: Dois ícones com repetição sem dica
+    GameLevel(iconCount: 3, withRepetition: true, hasHint: false),  // Nível 8: Três ícones com repetição sem dica
+  ];
+
   // --- Estado do Jogo ---
   GeneratorState _state = GeneratorState.selectingIcons;
   Set<String> _selectedIcons = {};
-  bool _withRepetition = false;
   List<List<String>> _generatedMelodies = [];
   int? _currentlyPlayingIndex;
+
+  // --- Variáveis para a Lógica do Jogo ---
+  List<String> _currentUserInput = [];
+  List<bool> _completedMelodies = [];
+  int _currentTargetMelodyIndex = 0;
+  ValidationState _validationState = ValidationState.neutral;
+  
+  // --- NOVAS Variáveis para o Modo de Níveis ---
+  int _currentLevelIndex = 0;
+  List<String> _activeIconsForCurrentLevel = [];
 
   // --- Getters Públicos ---
   GeneratorState get state => _state;
   Set<String> get selectedIcons => _selectedIcons;
   List<List<String>> get generatedMelodies => _generatedMelodies;
   int? get currentlyPlayingIndex => _currentlyPlayingIndex;
+  List<String> get currentUserInput => _currentUserInput;
+  List<bool> get completedMelodies => _completedMelodies;
+  int get currentTargetMelodyIndex => _currentTargetMelodyIndex;
+  ValidationState get validationState => _validationState;
+  
+  // Getters para o modo de níveis
+  bool get isLevelsMode => _state == GeneratorState.playingLevels || _state == GeneratorState.levelComplete;
+  int get currentLevelIndex => _currentLevelIndex;
+  GameLevel get currentLevel => _levels[_currentLevelIndex];
+  int get totalLevels => _levels.length;
+  List<String> get activeIconsForLevel => _activeIconsForCurrentLevel;
 
-  // Ícones disponíveis para escolha
+
   final List<String> availableIcons = [
     "BaterPalma", "BaterPe", "BaterPeito", "BaterPerna",
     "Gritar", "Beijo", "Assobiar", "EstalarDedo",
@@ -742,21 +845,163 @@ class MelodyGeneratorController extends ChangeNotifier {
     }
   }
 
-  void generateMelodies(bool withRepetition) {
-    _withRepetition = withRepetition;
-    _state = GeneratorState.displayingResults;
+  // --- Lógica de Início de Jogo ---
+
+  void startFreePlayMode(bool withRepetition) {
     final items = _selectedIcons.toList();
+    _activeIconsForCurrentLevel = items;
     
-    if (_withRepetition) {
+    if (withRepetition) {
       _generatedMelodies = _generatePermutationsWithRepetition(items, items.length);
     } else {
       _generatedMelodies = _generatePermutationsWithoutRepetition(items);
     }
+
+    _generatedMelodies.sort((a, b) => a.join().compareTo(b.join()));
+    _completedMelodies = List<bool>.generate(_generatedMelodies.length, (_) => false);
+    _currentUserInput = [];
+    _currentTargetMelodyIndex = 0;
+    _validationState = ValidationState.neutral;
+
+    _state = GeneratorState.playingFreePlay;
     notifyListeners();
   }
 
+  void startLevelsMode() {
+    _currentLevelIndex = 0;
+    _setupCurrentLevel();
+    _state = GeneratorState.playingLevels;
+    notifyListeners();
+  }
+
+  // --- Ações do Jogo Interativo ---
+
+  void handleIconTap(String iconType) {
+    if (_validationState == ValidationState.incorrect || _state == GeneratorState.gameWon || _state == GeneratorState.levelComplete) return;
+
+    _currentUserInput.add(iconType);
+    _playIconSound(iconType);
+    _validateInput();
+    notifyListeners();
+  }
+  
+  void clearUserInput() {
+      _currentUserInput.clear();
+      _validationState = ValidationState.neutral;
+      notifyListeners();
+  }
+  
+  void _validateInput() {
+    if (_generatedMelodies.isEmpty) return;
+
+    final int targetLength = _generatedMelodies.first.length;
+    
+    if (_currentUserInput.length != targetLength) {
+      return; 
+    }
+    
+    int? matchedIndex;
+    for (int i = 0; i < _generatedMelodies.length; i++) {
+        if (!_completedMelodies[i] &&
+            const ListEquality().equals(_generatedMelodies[i], _currentUserInput)) {
+            matchedIndex = i;
+            break; 
+        }
+    }
+
+    if (matchedIndex != null) {
+      // --- RESPOSTA CORRETA ---
+      _validationState = ValidationState.correct;
+      // <<< ALTERAÇÃO AQUI: Tocar som de acerto usando o novo método de feedback >>>
+      // Isso evita que o som do ícone seja cortado.
+      _audioService.playFeedbackAudio('assets/sounds/correto.mp3');
+      _completedMelodies[matchedIndex] = true;
+
+      _currentTargetMelodyIndex = matchedIndex; 
+      notifyListeners();
+
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if(_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
+
+        _currentUserInput.clear(); 
+        _validationState = ValidationState.neutral;
+        
+        _findNextTarget(); 
+        notifyListeners();
+      });
+
+    } else {
+      // --- RESPOSTA INCORRETA ---
+      _validationState = ValidationState.incorrect;
+      // <<< ALTERAÇÃO AQUI: Tocar som de erro usando o novo método de feedback >>>
+      // Isso evita que o som do ícone seja cortado.
+      _audioService.playFeedbackAudio('assets/sounds/errado.mp3');
+      notifyListeners();
+      
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if(_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
+
+        _currentUserInput.clear();
+        _validationState = ValidationState.neutral;
+        notifyListeners();
+      });
+    }
+  }
+
+  void _findNextTarget() {
+    int nextIndex = _completedMelodies.indexWhere((completed) => !completed);
+    
+    if (nextIndex != -1) {
+      _currentTargetMelodyIndex = nextIndex;
+    } else {
+      // Todos foram completados
+      if (isLevelsMode) {
+        _advanceToNextLevel();
+      } else {
+        _state = GeneratorState.gameWon;
+      }
+    }
+  }
+
+  // --- NOVAS Funções para o Modo de Níveis ---
+
+  void _setupCurrentLevel() {
+    final level = _levels[_currentLevelIndex];
+    final itemsForLevel = _selectedIcons.toList().sublist(0, level.iconCount);
+    _activeIconsForCurrentLevel = itemsForLevel;
+
+    if (level.withRepetition) {
+      _generatedMelodies = _generatePermutationsWithRepetition(itemsForLevel, level.iconCount);
+    } else {
+      _generatedMelodies = _generatePermutationsWithoutRepetition(itemsForLevel);
+    }
+    
+    _generatedMelodies.sort((a, b) => a.join().compareTo(b.join()));
+    _completedMelodies = List<bool>.generate(_generatedMelodies.length, (_) => false);
+    _currentUserInput = [];
+    _currentTargetMelodyIndex = 0;
+    _validationState = ValidationState.neutral;
+  }
+
+  void _advanceToNextLevel() {
+    if (_currentLevelIndex < _levels.length - 1) {
+      _state = GeneratorState.levelComplete;
+    } else {
+      _state = GeneratorState.gameWon;
+    }
+    notifyListeners();
+  }
+
+  void proceedToNextLevel() {
+    _currentLevelIndex++;
+    _setupCurrentLevel();
+    _state = GeneratorState.playingLevels;
+    notifyListeners();
+  }
+
+
   Future<void> playMelody(int index) async {
-    if (_currentlyPlayingIndex != null) return; // Evita tocar duas ao mesmo tempo
+    if (_currentlyPlayingIndex != null) return;
 
     final melody = _generatedMelodies[index];
     _currentlyPlayingIndex = index;
@@ -776,6 +1021,12 @@ class MelodyGeneratorController extends ChangeNotifier {
     _selectedIcons.clear();
     _generatedMelodies.clear();
     _currentlyPlayingIndex = null;
+    _currentUserInput.clear();
+    _completedMelodies.clear();
+    _currentTargetMelodyIndex = 0;
+    _validationState = ValidationState.neutral;
+    _currentLevelIndex = 0;
+    _activeIconsForCurrentLevel.clear();
     notifyListeners();
   }
 
@@ -862,13 +1113,16 @@ class MelodyGeneratorController extends ChangeNotifier {
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
+import 'package:flutter/semantics.dart'; // <-- ADICIONE ESTE IMPORT
+import 'package:provider/provider.dart';
 import 'audio_service.dart';
+import 'score_history_service.dart';
 
 
 enum GeniusGameState {
   notStarted,
   showingSequence,
+  playerTurn,
   waitingForInput,
   levelComplete,
   gameOver,
@@ -879,7 +1133,7 @@ class GeniusGameController extends ChangeNotifier {
   final Random _random = Random();
 
   Timer? _inputTimer;
-  Timer? _countdownTimer; // NOVO: Timer para atualizar a UI a cada segundo
+  Timer? _countdownTimer;
 
   GeniusGameController({required AudioService audioService}) : _audioService = audioService;
 
@@ -893,19 +1147,19 @@ class GeniusGameController extends ChangeNotifier {
   int _userInputIndex = 0;
   int _score = 0;
   String? _currentlyPlayingIcon;
-  int _countdown = 10; // NOVO: Variável para o contador regressivo
+  int _countdown = 10;
 
   GeniusGameState get gameState => _gameState;
   int get score => _score;
   String? get currentlyPlayingIcon => _currentlyPlayingIcon;
-  int get countdown => _countdown; // NOVO: Getter para a UI
+  int get countdown => _countdown;
 
-  void startGame() {
+  void startGame(BuildContext context) {
     _score = 0;
     _sequence = [];
     _gameState = GeniusGameState.showingSequence;
     notifyListeners();
-    _nextLevel();
+    _nextLevel(context);
   }
 
   void resetGame() {
@@ -917,12 +1171,10 @@ class GeniusGameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _nextLevel() async {
+  void _nextLevel(BuildContext context) async {
     _userInputIndex = 0;
     _gameState = GeniusGameState.showingSequence;
     notifyListeners();
-    SemanticsService.announce("Observe a sequência...", TextDirection.ltr);
-
     _sequence.add(availableIcons[_random.nextInt(availableIcons.length)]);
     
     const double baseDuration = 800;
@@ -946,16 +1198,28 @@ class GeniusGameController extends ChangeNotifier {
       await Future.delayed(gapDuration);
     }
 
+     // ====================== MUDANÇA AQUI ======================
+    // 1. Mude para o estado intermediário "playerTurn"
+    _gameState = GeniusGameState.playerTurn;
+    notifyListeners();
+
+    // 2. Aguarde um momento para que o jogador veja a mensagem "Sua vez!"
+    //    Você pode ajustar a duração (ex: 1200 para 1.2 segundos).
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    // 3. Verifique se o jogo não foi interrompido durante a pausa
+    if (_gameState != GeniusGameState.playerTurn) return;
+
+    // 4. Agora, mude para o estado de espera e inicie o timer.
     _gameState = GeniusGameState.waitingForInput;
     notifyListeners();
-    SemanticsService.announce("Sua vez!", TextDirection.ltr);
-    _startInputTimer();
+    _startInputTimer(context: context, seconds: 10);
   }
 
-  void handlePlayerInput(String iconType) {
+  void handlePlayerInput(String iconType, BuildContext context) {
     if (_gameState != GeniusGameState.waitingForInput) return;
     
-    _cancelTimers(); // Cancela ambos os timers ao receber input
+    _cancelTimers(); 
     _playIconSound(iconType);
 
     if (_sequence[_userInputIndex] == iconType) {
@@ -964,38 +1228,50 @@ class GeniusGameController extends ChangeNotifier {
         _score++;
         _gameState = GeniusGameState.levelComplete;
         notifyListeners();
-        Future.delayed(const Duration(milliseconds: 1500), _nextLevel);
+        Future.delayed(const Duration(milliseconds: 1500), () => _nextLevel(context));
       } else {
-         _startInputTimer();
+         _startInputTimer(context: context, seconds: 3);
       }
     } else {
-      _gameOver();
+      _gameOver(context);
     }
   }
 
-  void _gameOver() {
+  void _gameOver(BuildContext context) {
     _cancelTimers();
     _gameState = GeniusGameState.gameOver;
+    
+    context.read<ScoreHistoryService>().addScoreEntry(_score, _score + 1);
+
     _audioService.playAudio('assets/sounds/error.mp3');
-    SemanticsService.announce("Fim de Jogo! Pontuação final: $_score", TextDirection.ltr);
+
+    // ====================== MUDANÇA AQUI ======================
+    // Criamos a mensagem que será anunciada pelo leitor de tela.
+    final String announcement = "Fim de Jogo! Você alcançou o nível ${_score + 1} e sua pontuação foi ${_score}. Toque no botão Jogar Novamente para iniciar um novo jogo.";
+    
+    // Usamos um pequeno atraso para garantir que o som de erro não
+    // interrompa o anúncio do TalkBack.
+    Future.delayed(const Duration(milliseconds: 200), () {
+      SemanticsService.announce(announcement, TextDirection.ltr);
+    });
+    // ==========================================================
+
     notifyListeners();
   }
 
-  void _startInputTimer() {
+  void _startInputTimer({required BuildContext context, int seconds = 10}) {
     _cancelTimers();
-    _countdown = 10; // Reseta o contador
+    _countdown = seconds;
     notifyListeners();
 
-    // Timer principal que define o game over
-    _inputTimer = Timer(const Duration(seconds: 10), _gameOver);
+    _inputTimer = Timer(Duration(seconds: seconds), () => _gameOver(context));
 
-    // Timer secundário que atualiza a UI a cada segundo
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdown > 0) {
         _countdown--;
         notifyListeners();
       } else {
-        timer.cancel(); // Para o timer da UI quando chegar a zero
+        timer.cancel();
       }
     });
   }
@@ -1038,29 +1314,31 @@ import 'package:flutter/semantics.dart';
 import 'memory_game_service.dart';
 import 'orientation_service.dart';
 
-// Enum removido, usaremos uma lista de passos para mais flexibilidade
-
 class MemoryTutorialController extends ChangeNotifier {
   // --- Estado do Tutorial ---
-  int _currentStepIndex = -1; // Começa antes do primeiro passo
-  List<Function> _tutorialSteps = []; // Lista de funções, cada uma representa um passo
+  int _currentStepIndex = -1;
+  List<Function> _tutorialSteps = [];
   bool get isTutorialActive => _currentStepIndex < _tutorialSteps.length;
+  int get currentStepIndex => _currentStepIndex;
+  int get totalSteps => _tutorialSteps.length;
+  
+  // <-- NOVA PROPRIEDADE para rastrear qual card está ativo no tutorial -->
+  String? activeCardTutorialType;
+
 
   // --- Chaves e Destaques ---
-  final Map<String, GlobalKey> cardKeys = {}; // Um mapa de chaves para cada tipo de card
+  final Map<String, GlobalKey> cardKeys = {};
   final statusKey = GlobalKey();
   Rect? highlightRect;
   String guidanceText = '';
   Alignment guidanceAlignment = Alignment.center;
-  bool canTapHighlightedItem = false; // Controla se o item destacado pode ser tocado
+  bool canTapHighlightedItem = false;
 
   // --- Referências Externas ---
   late GeniusGameController _gameController;
   final OrientationService _orientationService = OrientationService();
   
-  // Construtor para inicializar as chaves dos cards
   MemoryTutorialController() {
-    // Esses nomes devem corresponder EXATAMENTE aos nomes em 'availableIcons' no GeniusGameController
     final iconTypes = ["BaterPalma", "BaterPe", "BaterPeito", "BaterPerna", "Gritar", "Beijo"];
     for (var type in iconTypes) {
       cardKeys[type] = GlobalKey();
@@ -1069,27 +1347,24 @@ class MemoryTutorialController extends ChangeNotifier {
 
   void start(BuildContext context, GeniusGameController gameController) {
     _gameController = gameController;
-    _buildTutorialSequence(); // Monta a sequência de passos
-    nextStep(); // Inicia o primeiro passo
+    _buildTutorialSequence();
+    nextStep();
   }
   
-  // Monta a sequência de passos do tutorial
   void _buildTutorialSequence() {
     _tutorialSteps = [
       _welcomeStep,
       _highlightStatusStep,
       _explainTimerStep,
-      // Gera um passo de exploração para cada card
       ...cardKeys.keys.map((iconType) => () => _exploreCardStep(iconType)),
       _pressStartStep,
     ];
   }
 
-  // Avança para o próximo passo da sequência
   void nextStep() {
     _currentStepIndex++;
     if (isTutorialActive) {
-      _tutorialSteps[_currentStepIndex](); // Executa a função do passo atual
+      _tutorialSteps[_currentStepIndex]();
     } else {
       _finishTutorial();
     }
@@ -1104,7 +1379,8 @@ class MemoryTutorialController extends ChangeNotifier {
   void _welcomeStep() {
     highlightRect = null;
     canTapHighlightedItem = false;
-    guidanceText = 'Bem-vindo ao Jogo da Memória! Para continuar, toque no botão "Começar" no canto inferior direito, ou toque em "Pular Tutorial" no canto inferior esquerdo.';
+    activeCardTutorialType = null; // <-- Limpa o card ativo
+    guidanceText = 'Bem-vindo ao Jogo da Memória! Para continuar, toque no botão "Começar" no canto inferior direito. Ou toque em "Pular Tutorial" no canto inferior esquerdo.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
@@ -1113,16 +1389,18 @@ class MemoryTutorialController extends ChangeNotifier {
   void _highlightStatusStep() {
     _calculateHighlight(statusKey);
     canTapHighlightedItem = false;
-    guidanceText = 'No painel superior, aparecerão as instruções como "Observe a sequência" ou "Sua vez", além da sua pontuação. Toque na tela para continuar.';
+    activeCardTutorialType = null; // <-- Limpa o card ativo
+    guidanceText = 'No painel superior, aparecerão as instruções como "Ouça a sequência." ou "Sua vez" e o botão Iniciar para começar o jogo. Toque no botão "Próximo", no canto inferior direito da tela para continuar.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
   }
   
   void _explainTimerStep() {
-    _calculateHighlight(statusKey); // Mantém o destaque na barra de status
+    _calculateHighlight(statusKey);
     canTapHighlightedItem = false;
-    guidanceText = 'Quando for a sua vez, um timer de 10 segundos aparecerá neste painel superior. Se não responder a tempo, o jogo termina. Toque na tela para continuar.';
+    activeCardTutorialType = null; // <-- Limpa o card ativo
+    guidanceText = 'Quando for a sua vez, um timer aparecerá. Você terá 10 segundos para o primeiro toque da sequência. Para os toques seguintes na mesma rodada, o tempo será de 3 segundos. Se não responder a tempo, o jogo termina. Toque no botão "Próximo" para continuar.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
@@ -1131,9 +1409,10 @@ class MemoryTutorialController extends ChangeNotifier {
  void _exploreCardStep(String iconType) {
     _calculateHighlight(cardKeys[iconType]!);
     canTapHighlightedItem = true;
+    activeCardTutorialType = iconType; // <-- Define o card ativo
     
     String cardName = _getSemanticsLabelFromType(iconType);
-    guidanceText = 'Agora toque no botão "$cardName" duas vezes para ouvir seu som. Quando estiver pronto, toque no botão "Próximo", no canto inferior direito da tela, para ouvir o próximo som.';
+    guidanceText = 'Agora vá até o botão "$cardName" e toque duas vezes nele para ouvir seu som. Quando estiver pronto, toque no botão "Próximo" para ouvir o próximo som.';
     guidanceAlignment = Alignment.topCenter;
     _announce(guidanceText);
     notifyListeners();
@@ -1143,20 +1422,28 @@ class MemoryTutorialController extends ChangeNotifier {
     _gameController.playCardSoundForTutorial(iconType);
   }
 
- void _pressStartStep() {
-    _calculateHighlight(statusKey);
-    canTapHighlightedItem = true;
-    guidanceText = 'Você conheceu todos os sons! Agora, toque duas vezes no botão "Iniciar" para começar sua primeira partida.';
+  void _pressStartStep() {
+    highlightRect = null; 
+    canTapHighlightedItem = false;
+    activeCardTutorialType = null; // <-- Limpa o card ativo
+    
+    guidanceText = 'Você conheceu todos os sons! Toque no botão "Finalizar Tutorial" para começar a jogar.';
     guidanceAlignment = Alignment.center;
-    _gameController.addListener(_onGameStarted);
-    _announce(guidanceText);
+    
     notifyListeners();
+
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (isTutorialActive && _currentStepIndex == _tutorialSteps.length - 1) {
+         _announce(guidanceText);
+      }
+    });
   }
   
   void _finishTutorial() {
-    _currentStepIndex = _tutorialSteps.length; // Garante que isTutorialActive seja false
+    _currentStepIndex = _tutorialSteps.length;
     highlightRect = null;
     guidanceText = '';
+    activeCardTutorialType = null; // <-- Limpa o card ativo
     _gameController.removeListener(_onGameStarted);
     _orientationService.markMemoryGameTutorialAsShown();
     _announce("Tutorial finalizado. Bom jogo!");
@@ -1182,12 +1469,10 @@ class MemoryTutorialController extends ChangeNotifier {
     }
   }
   
-  // Função para anunciar ao TalkBack
   void _announce(String message) {
     SemanticsService.announce(message, TextDirection.ltr);
   }
 
-  // Copiada para obter o nome para o anúncio
   String _getSemanticsLabelFromType(String type) {
     switch (type) {
       case "BaterPe": return "Bater Pé";
@@ -1550,6 +1835,397 @@ class SavedRowService extends ChangeNotifier {
   }
 }
 ----------------
+[services\score_history_service.dart]
+
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/score_history_model.dart';
+
+class ScoreHistoryService extends ChangeNotifier {
+  static const _historyKey = 'score_history';
+  List<ScoreHistoryEntry> _scores = [];
+
+  List<ScoreHistoryEntry> get scores => _scores;
+
+  ScoreHistoryService() {
+    loadHistory();
+  }
+
+ 
+  Future<void> loadHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? historyJson = prefs.getString(_historyKey);
+      if (historyJson != null && historyJson.isNotEmpty) {
+        final List<dynamic> decodedList = jsonDecode(historyJson);
+        _scores = decodedList
+            .map((item) => ScoreHistoryEntry.fromJson(item as Map<String, dynamic>))
+            .toList();
+      } else {
+        _scores = [];
+      }
+    } catch (e) {
+      _scores = [];
+      debugPrint("Erro ao carregar histórico de pontuação: $e");
+    }
+    notifyListeners();
+  }
+
+  
+  Future<void> _persistHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String historyJson = jsonEncode(_scores.map((entry) => entry.toJson()).toList());
+      await prefs.setString(_historyKey, historyJson);
+    } catch (e) {
+      debugPrint("Erro ao salvar histórico de pontuação: $e");
+    }
+  }
+
+  
+  Future<void> addScoreEntry(int score, int level) async {
+    final newEntry = ScoreHistoryEntry(
+      score: score,
+      level: level,
+      date: DateTime.now(),
+    );
+
+    
+    _scores.insert(0, newEntry);
+    
+    await _persistHistory();
+    notifyListeners();
+    debugPrint("Nova pontuação salva: ${newEntry.score} no nível ${newEntry.level}");
+  }
+}
+----------------
+[user_interface\screens\about_generator_screen.dart]
+
+// lib/user_interface/screens/about_generator_screen.dart
+
+import 'package:flutter/material.dart';
+
+class AboutGeneratorScreen extends StatelessWidget {
+  const AboutGeneratorScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Sobre"),
+        backgroundColor: Colors.blue,
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Container(
+        color: const Color.fromRGBO(220, 247, 255, 1.0),
+        child: ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            _buildInfoCard(context),
+            const SizedBox(height: 20),
+            _buildSupportCard(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(BuildContext context) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Center(
+              child: Text(
+                'Gerador de Sons e Imagens',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueAccent,
+                ),
+              ),
+            ),
+            const Center(
+              child: Text(
+                'Versão 1.0',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.black54,
+                ),
+              ),
+            ),
+            const Divider(height: 30),
+            _buildSectionTitle('O que é?'),
+            const Text(
+              'Um jogo interativo para explorar combinações de sons! Selecione seus sons favoritos e o jogo gerará todas as melodias possíveis para você ouvir e tentar replicar.',
+              style: TextStyle(fontSize: 16, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            _buildSectionTitle('Principais Funcionalidades'),
+            _buildFeatureItem(Icons.music_note_outlined, 'Selecione os Sons:',
+                'Escolha 2 ou 3 sons da nossa biblioteca para começar a brincadeira.'),
+            _buildFeatureItem(Icons.shuffle, 'Geração Automática:',
+                'O aplicativo cria todas as combinações de melodias possíveis com os sons que você escolheu.'),
+            _buildFeatureItem(
+                Icons.touch_app_outlined,
+                'Desafio Interativo:',
+                'Tente recriar as melodias tocando nos sons na ordem correta. O jogo dá feedback instantâneo se você acertou ou errou.'),
+            _buildFeatureItem(
+                Icons.trending_up_outlined,
+                'Modo Desafio:',
+                'Enfrente níveis de dificuldade crescente, começando com melodias simples e avançando para sequências mais complexas e sem dicas visuais.'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSupportCard() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            _buildSectionTitle('Apoio Institucional'),
+            const SizedBox(height: 15),
+            Semantics(
+              label:
+                  'Logotipos dos apoiadores: IFSP, CNPQ e RUMO à Educação Matemática Inclusiva',
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Image.asset('assets/images/IFSP_Logo.png',
+                      height: 60, fit: BoxFit.contain),
+                  Image.asset('assets/images/CNPQ_Logo.png',
+                      height: 60, fit: BoxFit.contain),
+                  Image.asset('assets/images/RUMO_Logo.png',
+                      height: 60, fit: BoxFit.contain),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(IconData icon, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.blue, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                    fontSize: 15, color: Colors.black87, height: 1.3),
+                children: [
+                  TextSpan(
+                      text: '$title ',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: description),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+----------------
+[user_interface\screens\about_memory_game_screen.dart]
+
+import 'package:flutter/material.dart';
+
+class MemoryGameAboutScreen extends StatelessWidget {
+  const MemoryGameAboutScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Sobre"),
+        backgroundColor: Colors.blue,
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Container(
+        color: const Color.fromRGBO(220, 247, 255, 1.0),
+        child: ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            _buildInfoCard(context),
+            const SizedBox(height: 20),
+            _buildSupportCard(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(BuildContext context) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Center(
+              child: Text(
+                'Jogo da Memória',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueAccent,
+                ),
+              ),
+            ),
+            const Center(
+              child: Text(
+                'Versão 1.0',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.black54,
+                ),
+              ),
+            ),
+            const Divider(height: 30),
+            _buildSectionTitle('O que é?'),
+            const Text(
+              'Um jogo de memória auditiva e visual: ouça a sequência de sons/ícones e repita na mesma ordem. '
+              'A cada nível a sequência cresce e o desafio aumenta.',
+              style: TextStyle(fontSize: 16, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            _buildSectionTitle('Principais Funcionalidades'),
+            _buildFeatureItem(Icons.visibility_outlined, 'Ouça a sequência:',
+                'os cartões são destacados um a um e seus sons são reproduzidos automaticamente para você memorizar a ordem.'),
+            _buildFeatureItem(Icons.touch_app_outlined, 'Repita na sua vez:',
+                'quando a exibição termina, toque nos cartões na mesma ordem apresentada. Um cronômetro no topo indica o tempo restante.'),
+            _buildFeatureItem(
+                Icons.trending_up_outlined,
+                'Progressão de níveis:',
+                'a cada acerto a sequência ganha um novo som, aumentando gradualmente a dificuldade e sua pontuação.'),
+            _buildFeatureItem(
+                Icons.volume_up_outlined,
+                'Feedback sonoro e visual:',
+                'cada cartão possui um som próprio (palmas, assobio, batidas, etc.) e realce visual durante a exibição e a sua jogada.'),
+            _buildFeatureItem(Icons.accessibility_new, 'Acessibilidade:',
+                'indicadores de estado são anunciados por leitor de tela (ex.: “Ouça a sequência”, “Sua vez”) e os cartões têm rótulos semânticos claros.'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSupportCard() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            _buildSectionTitle('Apoio Institucional'),
+            const SizedBox(height: 15),
+            Semantics(
+              label:
+                  'Logotipos dos apoiadores: IFSP, CNPQ e RUMO à Educação Matemática Inclusiva',
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Image.asset('assets/images/IFSP_Logo.png',
+                      height: 60, fit: BoxFit.contain),
+                  Image.asset('assets/images/CNPQ_Logo.png',
+                      height: 60, fit: BoxFit.contain),
+                  Image.asset('assets/images/RUMO_Logo.png',
+                      height: 60, fit: BoxFit.contain),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(IconData icon, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.blue, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                    fontSize: 15, color: Colors.black87, height: 1.3),
+                children: [
+                  TextSpan(
+                      text: '$title ',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: description),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+----------------
 [user_interface\screens\about_screen.dart]
 
 
@@ -1603,7 +2279,7 @@ class AboutScreen extends StatelessWidget {
             ),
             const Center(
               child: Text(
-                'Versão 1.2',
+                'Versão 1.3',
                 style: TextStyle(
                   fontSize: 16,
                   fontStyle: FontStyle.italic,
@@ -1701,19 +2377,17 @@ class AboutScreen extends StatelessWidget {
 [user_interface\screens\character_selection_screen.dart]
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Importe para o SystemChrome
 import 'package:provider/provider.dart';
 import '../../services/character_service.dart';
-import 'memory_game_screen.dart';
-import 'mathicons_screen.dart';
-import 'melody_generator_screen.dart';
-// Removido 'package:flutter/foundation.dart' pois kIsWeb não é mais usado aqui
-
-enum GameMode { creation, genius, generator}
+import 'home_screen.dart';
 
 class CharacterSelectionScreen extends StatefulWidget {
-  final GameMode gameMode;
-  const CharacterSelectionScreen({super.key, required this.gameMode});
+  final bool isInitialSelection;
+
+  const CharacterSelectionScreen({
+    super.key, 
+    this.isInitialSelection = false,
+  });
 
   @override
   State<CharacterSelectionScreen> createState() => _CharacterSelectionScreenState();
@@ -1734,13 +2408,13 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
 
   String _getCharacterSemanticsLabel(String type) {
     String gender = type.contains('boy') ? 'Menino' : 'Menina';
-    String tone = type.contains('dark') ? 'pele negra' : 'pele clara';
+    String tone = type.contains('dark') ? 'Pele Negra' : 'Pele Branca';
     return 'Personagem $gender, $tone. Toque para selecionar este personagem.';
   }
 
   String _getErrorSemanticsLabel(String type) {
     String gender = type.contains('boy') ? 'Menino' : 'Menina';
-    String tone = type.contains('dark') ? 'pele negra' : 'pele clara';
+    String tone = type.contains('dark') ? 'Pele Negra' : 'Pele Branca';
     return 'Erro ao carregar imagem do personagem $gender, $tone.';
   }
 
@@ -1751,12 +2425,19 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
     const double itemSpacing = 12.0;
     const double maxRowWidth = 600.0;
 
+    // ====================== MUDANÇA AQUI: Título Dinâmico ======================
+    final String appBarTitle = widget.isInitialSelection
+        ? 'Personagem'
+        : 'Escolha Seu Personagem';
+    // ===========================================================================
+
     return Scaffold(
       appBar: AppBar(
         title: Semantics(
           header: false,
-          child: const Text('Escolha Seu Personagem'),
+          child: Text(appBarTitle), // Usamos a variável com o título dinâmico
         ),
+        automaticallyImplyLeading: !widget.isInitialSelection,
         backgroundColor: Colors.blue,
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -1766,81 +2447,94 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 10.0),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: maxRowWidth),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: characterTypes.map((type) {
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: itemSpacing / 2),
-                        child: GestureDetector(
-                          onTap: () {
-                            characterController.setSelectedCharacter(type);
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (widget.isInitialSelection)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 30.0, left: 16.0, right: 16.0),
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        'Escolha um personagem para começar!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                    ),
+                  ),
 
-                          if (widget.gameMode == GameMode.creation) {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => const Mathicon()),
-                              );
-                            } else if (widget.gameMode == GameMode.genius) {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => const MemoryGameScreen()),
-                              );
-                            } else { // Novo caso para o Gerador de Melodias
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => const MelodyGeneratorScreen()),
-                              );
-                            }
-                          },
-                          child: Semantics(
-                            label: _getCharacterSemanticsLabel(type),
-                            button: true,
-                            child: ExcludeSemantics(
-                              child: Card(
-                                elevation: 4,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10)),
-                                clipBehavior: Clip.antiAlias,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(5.0),
-                                  child: AspectRatio(
-                                    aspectRatio: 90 / 120,
-                                    child: Image.asset(
-                                      _getCharacterImagePath(type),
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        print("Erro ao carregar imagem de seleção: ${_getCharacterImagePath(type)}\n$error");
-                                        return Semantics(
-                                          label: _getErrorSemanticsLabel(type),
-                                          image: true,
-                                          child: Container(
-                                              color: Colors.grey.shade300,
-                                              alignment: Alignment.center,
-                                              child: const ExcludeSemantics(
-                                                child: Icon(
-                                                    Icons.error_outline,
-                                                    color: Colors.redAccent,
-                                                    size: 30),
-                                              )),
-                                        );
-                                      },
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: maxRowWidth),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: characterTypes.map((type) {
+                        return Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: itemSpacing / 2),
+                            child: GestureDetector(
+                              onTap: () {
+                                characterController.setSelectedCharacter(type);
+                                if (widget.isInitialSelection) {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const HomeScreen()),
+                                  );
+                                } else {
+                                  Navigator.pop(context);
+                                }
+                              },
+                              child: Semantics(
+                                label: _getCharacterSemanticsLabel(type),
+                                button: true,
+                                child: ExcludeSemantics(
+                                  child: Card(
+                                    elevation: 4,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10)),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(5.0),
+                                      child: AspectRatio(
+                                        aspectRatio: 90 / 120,
+                                        child: Image.asset(
+                                          _getCharacterImagePath(type),
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            print("Erro ao carregar imagem de seleção: ${_getCharacterImagePath(type)}\n$error");
+                                            return Semantics(
+                                              label: _getErrorSemanticsLabel(type),
+                                              image: true,
+                                              child: Container(
+                                                  color: Colors.grey.shade300,
+                                                  alignment: Alignment.center,
+                                                  child: const ExcludeSemantics(
+                                                    child: Icon(
+                                                        Icons.error_outline,
+                                                        color: Colors.redAccent,
+                                                        size: 30),
+                                                  )),
+                                            );
+                                          },
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                        );
+                      }).toList(),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -1849,14 +2543,108 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
   }
 }
 ----------------
+[user_interface\screens\generator_instructions_screen.dart]
+
+// lib/user_interface/screens/generator_instructions_screen.dart
+
+import 'package:flutter/material.dart';
+
+class GeneratorInstructionsScreen extends StatelessWidget {
+  const GeneratorInstructionsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Instruções de Uso"),
+        backgroundColor: Colors.blue,
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
+        child: ListView(
+          children: [
+            _buildInstructionItem(
+              title: 'Objetivo do jogo',
+              description:
+                  'O objetivo é recriar as melodias geradas pelo jogo. Você deve tocar nos ícones na mesma sequência em que eles foram originalmente combinados.',
+            ),
+            _buildInstructionItem(
+              title: 'Passo 1: Selecionar os Sons',
+              description:
+                  'Na primeira tela, toque nos sons que você deseja usar para criar as melodias. Você pode escolher 2 ou 3 sons diferentes.',
+            ),
+            _buildInstructionItem(
+              title: 'Passo 2: Escolher o Modo de Jogo',
+              description:
+                  'Após selecionar os sons, escolha como quer jogar: "Modo Livre" (com ou sem repetição) para praticar, ou "Desafio por Níveis" para um jogo com dificuldade progressiva (requer 3 sons).',
+            ),
+             _buildInstructionItem(
+              title: 'Como Jogar',
+              description:
+                  'Na tela do jogo, uma melodia estará destacada em amarelo. Sua tarefa é tocá-la usando os ícones na parte inferior da tela. O primeiro som da melodia é mostrado como uma dica nos níveis iniciais.',
+            ),
+            _buildInstructionItem(
+              title: 'Ouvindo as Melodias',
+              description:
+                  'Se tiver dúvidas, toque no botão de "Play" ao lado de qualquer melodia na lista para ouvi-la antes de tentar recriá-la.',
+            ),
+            _buildInstructionItem(
+              title: 'Feedback',
+              description:
+                  'A caixa de entrada de sons mudará de cor para indicar se sua sequência está correta (verde) ou incorreta (vermelho). Se errar, a entrada será limpa para você tentar novamente.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInstructionItem({
+    required String title,
+    required String description,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: Colors.blueAccent,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          description,
+          textAlign: TextAlign.justify,
+          style: const TextStyle(
+            fontSize: 16,
+            color: Colors.black87,
+            height: 1.3,
+          ),
+        ),
+        const Divider(
+          thickness: 1,
+          height: 30,
+          color: Colors.black12,
+        ),
+      ],
+    );
+  }
+}
+----------------
 [user_interface\screens\home_screen.dart]
 
+import 'package:Mathnew/user_interface/screens/melody_generator_screen.dart';
 import 'package:flutter/material.dart';
 import 'character_selection_screen.dart';
 import '../../services/orientation_service.dart';
 import 'tutorial_overlay.dart';
-
-
+import 'mathicons_screen.dart';
+import 'memory_game_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -1865,76 +2653,127 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Escolha o Jogo'),
+        automaticallyImplyLeading: false, // evita foco desnecessário no "voltar"
+        title: Semantics(
+          // faz o TalkBack anunciar o título ao abrir a rota
+          namesRoute: true,
+          header: true,
+          child: Text('Escolha o Jogo'),
+        ),
         backgroundColor: Colors.blue,
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
-      ),
-      body: Container(
-        color: const Color.fromRGBO(220, 247, 255, 1.0),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildGameButton(
-                context: context,
-                label: 'Criar Melodia',
-                icon: Icons.music_note,
+        actions: [
+          // Botão "Trocar Personagem" com descrição acessível
+          FocusTraversalOrder(
+            order: const NumericFocusOrder(99), // deixa por último na ordem
+            child: Semantics(
+              button: true,
+              label: 'Trocar personagem',
+              hint: 'Abre a tela para escolher ou alterar o personagem.',
+              child: IconButton(
+                tooltip: 'Trocar Personagem',
+                icon: const Icon(Icons.person_search, color: Colors.white),
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      // Passamos o modo de jogo para a tela de seleção de personagem
-                      builder: (context) => const CharacterSelectionScreen(gameMode: GameMode.creation),
+                      builder: (context) => const CharacterSelectionScreen(),
                     ),
                   );
                 },
               ),
-              const SizedBox(height: 40),
-              _buildGameButton(
-                context: context,
-                label: 'Jogo da Memória',
-                icon: Icons.memory,
-                onPressed: () async {
-                  final orientationService = OrientationService();
-                  final bool tutorialShown = await orientationService.hasShownMemoryGameTutorial();
+            ),
+          ),
+        ],
+      ),
+      body: Container(
+        color: const Color.fromRGBO(220, 247, 255, 1.0),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            // Controle explícito da ordem de foco/leitura
+            child: FocusTraversalGroup(
+              policy: OrderedTraversalPolicy(),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 24,
+                runSpacing: 24,
+                children: [
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(1),
+                    child: _buildGameButton(
+                      context: context,
+                      label: 'Criar Melodia',
+                      icon: Icons.music_note,
+                      semanticsLabel: 'Criar Melodia',
+                      semanticsHint:
+                          'Abre o jogo para criar melodias.',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const Mathicon(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(2),
+                    child: _buildGameButton(
+                      context: context,
+                      label: 'Jogo da Memória',
+                      icon: Icons.memory,
+                      semanticsLabel: 'Jogo da Memória',
+                      semanticsHint:
+                          'Abre o jogo da memória. Caso seja a primeira vez, o tutorial será mostrado.',
+                      onPressed: () async {
+                        final orientationService = OrientationService();
+                        final bool tutorialShown = await orientationService
+                            .hasShownMemoryGameTutorial();
 
-                  if (context.mounted) {
-                    if (tutorialShown) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CharacterSelectionScreen(gameMode: GameMode.genius),
-                        ),
-                      );
-                    } else {
-                      // Chama a nova tela de overlay
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TutorialOverlay(),
-                        ),
-                      );
-                    }
-                  }
-                },
-              ),
-               const SizedBox(height: 30), // <-- NOVO ESPAÇAMENTO
-              // BOTÃO PARA O NOVO JOGO
-              _buildGameButton(
-                context: context,
-                label: 'Gerador de Melodias',
-                icon: Icons.auto_awesome_motion, // Um ícone sugestivo
-                onPressed: () {
-                   Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      // Passamos o novo modo de jogo
-                      builder: (context) => const CharacterSelectionScreen(gameMode: GameMode.generator),
+                        if (context.mounted) {
+                          if (tutorialShown) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const MemoryGameScreen(),
+                              ),
+                            );
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TutorialOverlay(),
+                              ),
+                            );
+                          }
+                        }
+                      },
                     ),
-                  );
-                },
+                  ),
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(1),
+                    child: _buildGameButton(
+                      context: context,
+                      label: 'Combina Som',
+                      icon: Icons.music_note,
+                      semanticsLabel: 'Combina Som',
+                      semanticsHint:
+                          'Abre o jogo Combina Som.',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MelodyGeneratorScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1946,27 +2785,167 @@ class HomeScreen extends StatelessWidget {
     required String label,
     required IconData icon,
     required VoidCallback onPressed,
+    String? semanticsLabel,
+    String? semanticsHint,
   }) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 32),
-      label: Text(label),
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        foregroundColor: Colors.white,
-        backgroundColor: Colors.blueAccent,
-        minimumSize: const Size(300, 80),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        minWidth: 260,
+        maxWidth: 300,
+        minHeight: 80,
+      ),
+      child: Semantics(
+        button: true,
+        label: semanticsLabel ?? label,
+        hint: semanticsHint ?? 'Toque para abrir $label.',
+        child: ElevatedButton.icon(
+          icon: Icon(icon, size: 32),
+          label: Text(label),
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            foregroundColor: Colors.white,
+            backgroundColor: Colors.blueAccent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+            elevation: 5,
+          ),
         ),
-        textStyle: const TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-        ),
-        elevation: 5,
       ),
     );
   }
 }
+
+----------------
+[user_interface\screens\instruction_memory_game_screen.dart]
+
+import 'package:flutter/material.dart';
+
+class MemoryGameInstructionsScreen extends StatelessWidget {
+  const MemoryGameInstructionsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Instruções de Uso"),
+        backgroundColor: Colors.blue,
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
+        child: ListView(
+          children: [
+            _buildInstructionItem(
+              title: 'Objetivo do jogo',
+              description:
+                  'Ouça a sequência de sons e reproduza na mesma ordem tocando os botões correspondentes. A cada nível, a sequência fica mais longa e a velocidade pode aumentar.',
+              semanticsDescription:
+                  'Seu objetivo é repetir a sequência de sons na ordem correta.',
+            ),
+            _buildInstructionItem(
+              title: 'Como iniciar',
+              description:
+                  'Na barra superior, toque no botão “Iniciar”. O jogo mostrará a primeira sequência. Ao final, será a sua vez.',
+              semanticsDescription:
+                  'Toque no botão Iniciar para começar a partida.',
+            ),
+            _buildInstructionItem(
+              title: 'Durante a exibição da sequência',
+              description:
+                  'Enquanto aparecer “Ouça a sequência.”, os botões ficam desativados. Fique atento à luz/realce dos cartões e aos sons correspondentes.',
+              semanticsDescription:
+                  'Enquanto a sequência é exibida, os botões não podem ser tocados.',
+            ),
+            _buildInstructionItem(
+              title: 'Sua vez de jogar',
+              description:
+                  'Quando aparecer “Sua vez”, toque nos cartões na ordem que ouviu. Há um cronômetro de tempo limitado. Se o tempo acabar, o jogo termina.',
+              semanticsDescription:
+                  'Ao aparecer Sua vez, toque os cartões na ordem correta antes do tempo acabar.',
+            ),
+            _buildInstructionItem(
+              title: 'Cronômetro',
+              description:
+                  'O cronômetro aparece no painel superior durante a sua jogada. Você tem 10 segundos para o primeiro toque de cada nível e 3 segundos para os toques seguintes na mesma rodada. Se o tempo acabar, o jogo termina.',
+              semanticsDescription:
+                  'O cronômetro fica no painel superior durante sua vez, com 10 segundos para o primeiro toque e 3 para os demais.',
+            ),
+            _buildInstructionItem(
+              title: 'Pontuação e níveis',
+              description:
+                  'Cada sequência completada aumenta sua pontuação e avança para o próximo nível. A dificuldade cresce gradualmente.',
+              semanticsDescription:
+                  'A cada sequência correta você ganha pontos e passa de nível.',
+            ),
+            _buildInstructionItem(
+              title: 'Sons e cartões',
+              description:
+                  'Cada cartão representa um som: Bater Palma, Bater Pé, Bater Peito, Bater Perna, Gritar e Mandar Beijo. Toque duas vezes no cartão para selecioná-lo durante sua vez.',
+              semanticsDescription:
+                  'Cada cartão corresponde a um som. Toque duas vezes no cartão correto durante sua vez.',
+            ),
+            _buildInstructionItem(
+              title: 'Reiniciar partida',
+              description:
+                  'Após “Fim de Jogo”, toque em “Jogar Novamente” para recomeçar do nível 1.',
+              semanticsDescription:
+                  'Após o fim de jogo, toque em Jogar Novamente para reiniciar.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInstructionItem({
+    required String title,
+    required String description,
+    required String semanticsDescription,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          label: title,
+          header: false,
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.blueAccent,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Semantics(
+          label: semanticsDescription,
+          child: Text(
+            description,
+            textAlign: TextAlign.justify,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black87,
+              height: 1.3,
+            ),
+          ),
+        ),
+        const Divider(
+          thickness: 1,
+          height: 30,
+          color: Colors.black12,
+        ),
+      ],
+    );
+  }
+}
+
 ----------------
 [user_interface\screens\instruction_screen.dart]
 
@@ -2131,6 +3110,7 @@ class InstructionsScreen extends StatelessWidget {
 ----------------
 [user_interface\screens\mathicons_screen.dart]
 
+import 'package:Mathnew/user_interface/widgets/app_drawer_header.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/character_service.dart';
@@ -2341,76 +3321,7 @@ class _MathiconState extends State<Mathicon> {
               controller: _drawerScrollController,
               padding: EdgeInsets.zero,
               children: [
-                DrawerHeader(
-                  decoration: const BoxDecoration(
-                    color: Colors.blue,
-                  ),
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Semantics(
-                              child: const Text(
-                                'Apoio',
-                                style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Semantics(
-                              label:
-                                  'Logotipos dos apoiadores: IFSP, CNPQ e RUMO à Educação Matemática Inclusiva',
-                              child: Container(
-                                padding: const EdgeInsets.all(10.0),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(15),
-                                  boxShadow: [
-                                    BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 8,
-                                        offset: const Offset(2, 4))
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Image.asset('assets/images/IFSP_Logo.png',
-                                        height: 70, fit: BoxFit.contain),
-                                    const SizedBox(width: 5),
-                                    Image.asset('assets/images/CNPQ_Logo.png',
-                                        height: 70, fit: BoxFit.contain),
-                                    const SizedBox(width: 5),
-                                    Image.asset('assets/images/RUMO_Logo.png',
-                                        height: 70, fit: BoxFit.contain),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 100,
-                        left: 230,
-                        child: Semantics(
-                          label: 'Botão de Fechar menu',
-                          child: IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                const AppDrawerHeader(),
                  ListTile(
                   leading: const Icon(Icons.home_filled, color: Colors.blue),
                   title: Semantics(
@@ -3107,43 +4018,277 @@ class _MathiconState extends State<Mathicon> {
 
 // lib/user_interface/screens/melody_generator_screen.dart
 
+import 'package:Mathnew/user_interface/screens/tanks_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../services/character_service.dart';
 import '../../services/melody_generator_service.dart';
+import 'about_generator_screen.dart';
+import 'generator_instructions_screen.dart';
+import '../widgets/app_drawer_header.dart';
 
-class MelodyGeneratorScreen extends StatelessWidget {
+class MelodyGeneratorScreen extends StatefulWidget {
   const MelodyGeneratorScreen({super.key});
+
+  @override
+  State<MelodyGeneratorScreen> createState() => _MelodyGeneratorScreenState();
+}
+
+class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
+  int _previousTargetIndex = 0;
+  GeneratorState? _previousState;
+
+  AppBar _buildAppBar(
+      BuildContext context, MelodyGeneratorController controller) {
+    const backgroundColor = Color.fromRGBO(220, 247, 255, 1.0);
+    const titleTextStyle = TextStyle(color: Colors.black87, fontSize: 20);
+    const iconTheme = IconThemeData(color: Colors.blue, size: 30);
+
+    switch (controller.state) {
+      case GeneratorState.selectingIcons:
+        final bool canConfirm = controller.selectedIcons.length >= 2;
+        return AppBar(
+          backgroundColor: backgroundColor,
+          titleTextStyle: titleTextStyle,
+          iconTheme: iconTheme,
+          leading: Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu),
+              tooltip: "Abrir menu",
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
+          title: const Text('Selecione 2 ou 3 sons'),
+          centerTitle: true,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 12.0),
+              child: Center(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    backgroundColor: canConfirm ? Colors.blue : Colors.grey,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: canConfirm ? controller.confirmIconSelection : null,
+                  child: const Text('Confirmar'),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      case GeneratorState.selectingMode:
+        return AppBar(
+          backgroundColor: backgroundColor,
+          titleTextStyle: titleTextStyle,
+          iconTheme: iconTheme,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: "Voltar para seleção",
+            onPressed: controller.reset,
+          ),
+          title: const Text('Escolha um modo de jogo'),
+          centerTitle: true,
+        );
+
+      default:
+        return AppBar(
+          backgroundColor: backgroundColor,
+          titleTextStyle: titleTextStyle,
+          iconTheme: iconTheme,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: "Voltar para seleção",
+            onPressed: controller.reset,
+          ),
+          actions: [
+            if (controller.isLevelsMode)
+              Padding(
+                padding: const EdgeInsets.only(right: 20.0),
+                child: Center(
+                  child: Text(
+                    'Nível: ${controller.currentLevelIndex + 1}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<MelodyGeneratorController>();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gerador de Melodias'),
-        backgroundColor: Colors.blue,
-        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
-        iconTheme: const IconThemeData(color: Colors.white),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            context.read<MelodyGeneratorController>().reset();
-            Navigator.of(context).pop();
-          },
-        ),
-      ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: const Color.fromRGBO(220, 247, 255, 1.0),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: _buildScreenForState(context, controller),
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_previousState != GeneratorState.gameWon &&
+          controller.state == GeneratorState.gameWon &&
+          mounted) {
+        _showGameWonDialog(context);
+      }
+      _previousState = controller.state;
+    });
+
+    // A lógica de rolagem volta a ser a da versão de duas colunas
+    final targetRowIndex = (controller.currentTargetMelodyIndex / 2).floor();
+    if ((controller.state == GeneratorState.playingFreePlay || controller.state == GeneratorState.playingLevels) &&
+        targetRowIndex != (_previousTargetIndex / 2).floor()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _itemScrollController.isAttached) {
+          _itemScrollController.scrollTo(
+            index: targetRowIndex,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOutCubic,
+          );
+          setState(() {
+            _previousTargetIndex = controller.currentTargetMelodyIndex;
+          });
+        }
+      });
+    }
+
+    return PopScope(
+      canPop: controller.state == GeneratorState.selectingIcons,
+      onPopInvoked: (bool didPop) {
+        if (didPop) return;
+        controller.reset();
+      },
+      child: Scaffold(
+        drawer: _buildGameDrawer(context),
+        appBar: _buildAppBar(context, controller),
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: const Color.fromRGBO(220, 247, 255, 1.0),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: _buildScreenForState(context, controller),
+          ),
         ),
       ),
     );
   }
+
+  Widget _buildGameDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+         const AppDrawerHeader(),
+          ListTile(
+            leading: const Icon(Icons.home_filled, color: Colors.blue),
+            title: const Text('Escolha o Jogo'),
+            onTap: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.help_outline, color: Colors.blue),
+            title: const Text('Instruções de Uso'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const GeneratorInstructionsScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.handshake, color: Colors.blue),
+            title: const Text('Agradecimentos'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ThankYouScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline, color: Colors.blue),
+            title: const Text('Sobre'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const AboutGeneratorScreen()));
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // <<< INÍCIO DA ALTERAÇÃO >>>
+  // Esta função foi modificada para ser responsiva.
+  void _showGameWonDialog(BuildContext context) {
+    final controller = context.read<MelodyGeneratorController>();
+    final bool wonLevels =
+        controller.isLevelsMode || _previousState == GeneratorState.levelComplete;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: Center(
+              child: Text(wonLevels ? 'Desafio Completo!' : 'Parabéns!')),
+          // ALTERAÇÃO 1: Adicionado SingleChildScrollView
+          // Garante que o conteúdo possa rolar se a tela for muito pequena.
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.star, color: Colors.amber, size: 80),
+                const SizedBox(height: 16),
+                Text(
+                  wonLevels
+                      ? 'Você completou todos os níveis!'
+                      : 'Você completou todas as melodias!',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18),
+                ),
+              ],
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: <Widget>[
+            ElevatedButton.icon(
+              icon: const Icon(Icons.refresh),
+              label: const Text('Jogar Novamente'),
+              style: ElevatedButton.styleFrom(
+                // ALTERAÇÃO 2: Removido 'minimumSize' e adicionado 'padding' flexível.
+                // O botão agora pode encolher em telas menores.
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                textStyle: const TextStyle(fontSize: 16),
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext, rootNavigator: true).pop();
+                Future.microtask(() {
+                  controller.reset();
+                });
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+  // <<< FIM DA ALTERAÇÃO >>>
 
   Widget _buildScreenForState(
       BuildContext context, MelodyGeneratorController controller) {
@@ -3152,186 +4297,54 @@ class MelodyGeneratorScreen extends StatelessWidget {
         return _buildIconSelection(context, controller);
       case GeneratorState.selectingMode:
         return _buildModeSelection(context, controller);
-      case GeneratorState.displayingResults:
-        return _buildResults(context, controller);
+      case GeneratorState.playingFreePlay:
+      case GeneratorState.playingLevels:
+      case GeneratorState.gameWon:
+        return _buildGameScreen(context, controller);
+      case GeneratorState.levelComplete:
+        return _buildLevelCompleteScreen(context, controller);
     }
   }
 
-  // --- TELA 1: Seleção de Ícones (Permanece a mesma) ---
-  Widget _buildIconSelection(BuildContext context, MelodyGeneratorController controller) {
+  Widget _buildIconSelection(
+      BuildContext context, MelodyGeneratorController controller) {
     final characterController = context.read<CharacterController>();
     final typeParts = characterController.selectedCharacterType.split('_');
     final gender = typeParts.isNotEmpty ? typeParts[0] : 'boy';
     final tone = typeParts.length > 1 ? typeParts[1] : 'light';
-    final bool canConfirm = controller.selectedIcons.length >= 2;
 
-    return Column(
+    return GridView.builder(
       key: const ValueKey('iconSelection'),
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            'Escolha 2 ou 3 sons para combinar',
-            style: Theme.of(context).textTheme.headlineSmall,
-            textAlign: TextAlign.center,
-          ),
-        ),
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 5,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: controller.availableIcons.length,
-            itemBuilder: (context, index) {
-              final iconType = controller.availableIcons[index];
-              final isSelected = controller.selectedIcons.contains(iconType);
-              return GestureDetector(
-                onTap: () => controller.toggleIconSelection(iconType),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: isSelected
-                        ? Border.all(color: Colors.green.shade700, width: 4)
-                        : Border.all(color: Colors.transparent, width: 4),
-                    color: Colors.blue.withOpacity(0.8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child:
-                        Image.asset(_getIconImagePath(iconType, gender, tone)),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.check),
-            label: const Text('Confirmar Seleção'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(250, 50),
-              textStyle: const TextStyle(fontSize: 18),
-              backgroundColor: canConfirm ? Colors.green : Colors.grey,
-            ),
-            onPressed: canConfirm ? controller.confirmIconSelection : null,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --- TELA 2: Seleção de Modo (Permanece a mesma) ---
-  Widget _buildModeSelection(BuildContext context, MelodyGeneratorController controller) {
-    return Column(
-      key: const ValueKey('modeSelection'),
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          'Como você quer organizar os sons?',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 30),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(minimumSize: const Size(300, 60)),
-          onPressed: () => controller.generateMelodies(false),
-          child: const Text('Sem Repetição', style: TextStyle(fontSize: 20)),
-        ),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(minimumSize: const Size(300, 60)),
-          onPressed: () => controller.generateMelodies(true),
-          child: const Text('Com Repetição', style: TextStyle(fontSize: 20)),
-        ),
-      ],
-    );
-  }
-
-  // --- TELA 3: Exibição dos Resultados (MODIFICADA) ---
-  Widget _buildResults(BuildContext context, MelodyGeneratorController controller) {
-    // Acessa o controller para saber se é com repetição ou não
-    final melodyController = context.read<MelodyGeneratorController>();
-
-    return Column(
-      key: const ValueKey('results'),
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Text(
-            '${controller.generatedMelodies.length} melodias possíveis encontradas!',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
-        Expanded(
-          // ESCOLHE QUAL VISUALIZAÇÃO MOSTRAR
-          child: melodyController.selectedIcons.length > 3 || melodyController.generatedMelodies.length > 6
-              ? _buildResultsList(context, controller) // Se for muito complexo, usa lista
-              : _PermutationTreeView(controller: controller), // Caso contrário, usa a árvore
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.refresh),
-            label: const Text('Começar de Novo'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(250, 50),
-              textStyle: const TextStyle(fontSize: 18),
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: controller.reset,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --- VISUALIZAÇÃO EM LISTA (ANTIGA) ---
-  Widget _buildResultsList(BuildContext context, MelodyGeneratorController controller) {
-    final characterController = context.read<CharacterController>();
-    final typeParts = characterController.selectedCharacterType.split('_');
-    final gender = typeParts.isNotEmpty ? typeParts[0] : 'boy';
-    final tone = typeParts.length > 1 ? typeParts[1] : 'light';
-
-    return ListView.builder(
-      itemCount: controller.generatedMelodies.length,
+      padding: const EdgeInsets.all(12),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 5,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: controller.availableIcons.length,
       itemBuilder: (context, index) {
-        final melody = controller.generatedMelodies[index];
-        final isPlaying = controller.currentlyPlayingIndex == index;
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          color: isPlaying ? Colors.yellow.shade200 : Colors.white,
-          child: ListTile(
-            leading: Text('${index + 1}.', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            title: Wrap(
-              spacing: 8.0,
-              runSpacing: 4.0,
-              children: melody.map((iconType) {
-                return Image.asset(
-                  _getIconImagePath(iconType, gender, tone),
-                  height: 30,
-                );
-              }).toList(),
+        final iconType = controller.availableIcons[index];
+        final isSelected = controller.selectedIcons.contains(iconType);
+        return GestureDetector(
+          onTap: () => controller.toggleIconSelection(iconType),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: isSelected
+                  ? Border.all(color: Colors.green.shade700, width: 4)
+                  : Border.all(color: Colors.transparent, width: 4),
+              color: Colors.blue.withOpacity(0.8),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2)),
+              ],
             ),
-            trailing: IconButton(
-              icon: Icon(
-                isPlaying ? Icons.stop_circle_outlined : Icons.play_circle_outline,
-                color: Colors.blue,
-                size: 32,
-              ),
-              onPressed: () => controller.playMelody(index),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Image.asset(_getIconImagePath(iconType, gender, tone)),
             ),
           ),
         );
@@ -3339,14 +4352,370 @@ class MelodyGeneratorScreen extends StatelessWidget {
     );
   }
 
-  // Helper para obter o caminho da imagem do ícone
+  Widget _buildModeSelection(
+      BuildContext context, MelodyGeneratorController controller) {
+    final bool canPlayLevels = controller.selectedIcons.length >= 3;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: Container(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+            child: Column(
+              key: const ValueKey('modeSelection'),
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.emoji_events),
+                  label: const Text('Desafio por Níveis', style: TextStyle(fontSize: 18)),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(280, 55),
+                    backgroundColor: canPlayLevels ? Colors.amber : Colors.grey,
+                  ),
+                  onPressed: canPlayLevels ? controller.startLevelsMode : null,
+                ),
+                if (!canPlayLevels)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      '(requer 3 sons selecionados)',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.black54),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.play_circle_fill),
+                  label: const Text('Sem Repetição', style: TextStyle(fontSize: 18)),
+                  style: ElevatedButton.styleFrom(minimumSize: const Size(280, 55)),
+                  onPressed: () => controller.startFreePlayMode(false),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.replay_circle_filled),
+                  label: const Text('Com Repetição', style: TextStyle(fontSize: 18)),
+                  style: ElevatedButton.styleFrom(minimumSize: const Size(280, 55)),
+                  onPressed: () => controller.startFreePlayMode(true),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLevelCompleteScreen(
+      BuildContext context, MelodyGeneratorController controller) {
+    return Column(
+      key: const ValueKey('levelComplete'),
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Nível ${controller.currentLevelIndex + 1} Completo!',
+          style: Theme.of(context)
+              .textTheme
+              .headlineMedium
+              ?.copyWith(color: Colors.green.shade800),
+        ),
+        const SizedBox(height: 20),
+        const Icon(Icons.check_circle, color: Colors.green, size: 100),
+        const SizedBox(height: 40),
+        ElevatedButton(
+          onPressed: controller.proceedToNextLevel,
+          style: ElevatedButton.styleFrom(minimumSize: const Size(250, 50)),
+          child: Text('Ir para o Nível ${controller.currentLevelIndex + 2}',
+              style: const TextStyle(fontSize: 18)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGameScreen(
+      BuildContext context, MelodyGeneratorController controller) {
+    final characterController = context.read<CharacterController>();
+    final typeParts = characterController.selectedCharacterType.split('_');
+    final gender = typeParts.isNotEmpty ? typeParts[0] : 'boy';
+    final tone = typeParts.length > 1 ? typeParts[1] : 'light';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8.0, 0, 8.0, 8.0),
+      child: Column(
+        key: const ValueKey('gameScreen'),
+        children: [
+          Expanded(
+            child: _buildMelodyList(controller, gender, tone),
+          ),
+          const Divider(thickness: 1.5, height: 8),
+          _buildInteractionArea(context, controller, gender, tone),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInteractionArea(BuildContext context,
+      MelodyGeneratorController controller, String gender, String tone) {
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildUserInputDisplay(controller, gender, tone),
+          const SizedBox(height: 8),
+          _buildIconInputPanel(controller, gender, tone),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMelodyList(
+      MelodyGeneratorController controller, String gender, String tone) {
+    final melodies = controller.generatedMelodies;
+    final rowCount = (melodies.length / 2).ceil();
+    // Pega a largura da tela para passar para os itens filhos
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return ScrollablePositionedList.builder(
+      itemCount: rowCount,
+      itemScrollController: _itemScrollController,
+      itemPositionsListener: _itemPositionsListener,
+      itemBuilder: (context, rowIndex) {
+        final int item1Index = rowIndex * 2;
+        final int item2Index = item1Index + 1;
+
+        final Widget item1 = _buildMelodyItemWidget(
+          controller: controller,
+          index: item1Index,
+          gender: gender,
+          tone: tone,
+          screenWidth: screenWidth, // Passa a largura da tela
+        );
+
+        if (item2Index < melodies.length) {
+          final Widget item2 = _buildMelodyItemWidget(
+            controller: controller,
+            index: item2Index,
+            gender: gender,
+            tone: tone,
+            screenWidth: screenWidth, // Passa a largura da tela
+          );
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: item1),
+              const SizedBox(width: 8),
+              Expanded(child: item2),
+            ],
+          );
+        } else {
+          return Row(
+            children: [
+              const Spacer(flex: 1),
+              Expanded(flex: 2, child: item1),
+              const Spacer(flex: 1),
+            ],
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildMelodyItemWidget({
+    required MelodyGeneratorController controller,
+    required int index,
+    required String gender,
+    required String tone,
+    required double screenWidth, // Novo parâmetro
+  }) {
+    // MUDANÇA AQUI: Calcula os tamanhos dinamicamente
+    // Define um tamanho para o ícone da melodia, com limites mínimo e máximo
+    final double iconSize = (screenWidth * 0.05).clamp(28.0, 40.0);
+    // Define o tamanho para os ícones de status (check) e play
+    final double leadingIconSize = (screenWidth * 0.04).clamp(24.0, 30.0);
+    final double trailingIconSize = (screenWidth * 0.045).clamp(26.0, 32.0);
+    // Reduz o espaçamento entre os ícones em telas menores
+    final double iconSpacing = (screenWidth * 0.01).clamp(4.0, 8.0);
+
+    final melody = controller.generatedMelodies[index];
+    final isPlaying = controller.currentlyPlayingIndex == index;
+    final isCompleted = controller.completedMelodies[index];
+    final isCurrentTarget = controller.currentTargetMelodyIndex == index;
+    final bool showHint = controller.isLevelsMode ? controller.currentLevel.hasHint : true;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      color: isCurrentTarget ? Colors.yellow.shade100 : Colors.white,
+      elevation: isCurrentTarget ? 4 : 2,
+      child: ListTile(
+        // MUDANÇA AQUI: Deixa o ListTile mais compacto
+        visualDensity: VisualDensity.compact,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 6.0),
+
+        leading: Icon(
+          isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+          color: isCompleted ? Colors.green : Colors.grey,
+          size: leadingIconSize, // Tamanho dinâmico
+        ),
+        title: Wrap(
+          spacing: iconSpacing, // Espaçamento dinâmico
+          runSpacing: 4.0,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (isCompleted)
+              ...melody.map((iconType) =>
+                  Image.asset(_getIconImagePath(iconType, gender, tone), height: iconSize)) // Tamanho dinâmico
+            else ...[
+              if (showHint)
+                Image.asset(_getIconImagePath(melody.first, gender, tone), height: iconSize) // Tamanho dinâmico
+              else
+                _buildHiddenIcon(size: iconSize), // Tamanho dinâmico
+              ...List.generate(melody.length - 1, (_) => _buildHiddenIcon(size: iconSize)), // Tamanho dinâmico
+            ]
+          ],
+        ),
+        trailing: IconButton(
+          icon: Icon(
+            isPlaying ? Icons.stop_circle_outlined : Icons.play_circle_outline,
+            color: Colors.blue,
+            size: trailingIconSize, // Tamanho dinâmico
+          ),
+          onPressed: () => controller.playMelody(index),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHiddenIcon({required double size}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade400)),
+      child: Icon(
+        Icons.question_mark_rounded,
+        color: Colors.grey.shade600,
+        size: size * 0.6, // Ícone interno também é proporcional
+      ),
+    );
+  }
+
+  Widget _buildUserInputDisplay(
+      MelodyGeneratorController controller, String gender, String tone) {
+    Color feedbackColor;
+    switch (controller.validationState) {
+      case ValidationState.neutral:
+        feedbackColor = Colors.blue.shade100;
+        break;
+      case ValidationState.correct:
+        feedbackColor = Colors.green.shade200;
+        break;
+      case ValidationState.incorrect:
+        feedbackColor = Colors.red.shade200;
+        break;
+    }
+    const double iconHeight = 36.0;
+    const double minContainerHeight = 48.0;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      constraints: const BoxConstraints(minHeight: minContainerHeight),
+      decoration: BoxDecoration(
+          color: feedbackColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey.shade400)),
+      child: Row(
+        children: [
+          Expanded(
+            child: controller.currentUserInput.isEmpty
+                ? Center(
+                    child: Text(
+                      "Toque nos sons abaixo...",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  )
+                : Wrap(
+                    spacing: 6.0,
+                    runSpacing: 4.0,
+                    alignment: WrapAlignment.center,
+                    children: controller.currentUserInput.map((iconType) {
+                      return Image.asset(
+                          _getIconImagePath(iconType, gender, tone),
+                          height: iconHeight);
+                    }).toList(),
+                  ),
+          ),
+          if (controller.currentUserInput.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.backspace_outlined),
+              onPressed: controller.clearUserInput,
+              tooltip: "Limpar entrada",
+            )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIconInputPanel(
+      MelodyGeneratorController controller, String gender, String tone) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    final iconCount = controller.activeIconsForLevel.length;
+    if (iconCount == 0) return const SizedBox.shrink();
+
+    const double horizontalPadding = 40.0;
+    const double minIconSize = 50.0;
+    const double maxIconSize = 80.0;
+    const double minSpacing = 12.0;
+    final availableWidth = screenWidth - horizontalPadding;
+    final idealSize =
+        (availableWidth - ((iconCount - 1) * minSpacing)) / iconCount;
+    final double iconSize = idealSize.clamp(minIconSize, maxIconSize);
+    final double spacing = (iconSize * 0.15).clamp(8.0, 20.0);
+    final double innerPadding = (iconSize * 0.12);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0, top: 4.0),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: spacing,
+        runSpacing: spacing,
+        children: controller.activeIconsForLevel.map((iconType) {
+          return GestureDetector(
+            onTap: () => controller.handleIconTap(iconType),
+            child: Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Container(
+                padding: EdgeInsets.all(innerPadding),
+                width: iconSize,
+                height: iconSize,
+                child: Image.asset(
+                  _getIconImagePath(iconType, gender, tone),
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   String _getIconImagePath(String iconType, String gender, String tone) {
     String basePath = 'assets/images/buttons/button_';
     String imagePath;
-
     switch (iconType) {
-      case "BaterPalma": imagePath = '${basePath}bater_palma_${tone}_transp.png'; break;
-      case "EstalarDedo": imagePath = '${basePath}estalar_dedo_${tone}_transp.png'; break;
+      case "BaterPalma":
+        imagePath = '${basePath}bater_palma_${tone}_transp.png';
+        break;
+      case "EstalarDedo":
+        imagePath = '${basePath}estalar_dedo_${tone}_transp.png';
+        break;
       case "BaterPeito":
       case "BaterPe":
       case "BaterPerna":
@@ -3355,274 +4724,33 @@ class MelodyGeneratorScreen extends StatelessWidget {
       case "Assobiar":
       case "EstalarLingua1":
       case "EstalarLingua2":
-        String snakeCaseType = iconType.replaceAllMapped(RegExp(r'[A-Z]'), (match) => '_${match.group(0)?.toLowerCase()}').substring(1);
+        String snakeCaseType = iconType
+            .replaceAllMapped(
+                RegExp(r'[A-Z]'), (match) => '_${match.group(0)?.toLowerCase()}')
+            .substring(1);
         imagePath = '$basePath${snakeCaseType}_${gender}_${tone}_transp.png';
         break;
-      default: imagePath = 'assets/images/placeholder.png';
+      default:
+        imagePath = 'assets/images/placeholder.png';
     }
     return imagePath;
-  }
-}
-
-// =======================================================================
-// ================ NOVOS WIDGETS PARA A ÁRVORE ==========================
-// =======================================================================
-
-// WIDGET PRINCIPAL QUE MONTA A ÁRVORE
-class _PermutationTreeView extends StatelessWidget {
-  final MelodyGeneratorController controller;
-  
-  const _PermutationTreeView({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final int n = controller.selectedIcons.length;
-
-    // Se não for permutação de 2 ou 3, usa a lista como fallback
-    if (n < 2 || n > 3) {
-      return (const MelodyGeneratorScreen())._buildResultsList(context, controller);
-    }
-    
-    // Constantes de layout
-    const double nodeWidth = 120.0;
-    const double nodeHeight = 50.0;
-    const double levelGap = 60.0;
-    const double leafNodeWidth = 150;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final double maxWidth = constraints.maxWidth;
-        final List<Offset> leafPositions = [];
-        final List<Offset> level1Positions = [];
-        Offset rootPosition;
-
-        List<Widget> nodes = [];
-
-        // --- CÁLCULO DAS POSIÇÕES ---
-        if (n == 2) {
-          // Raiz
-          rootPosition = Offset(maxWidth / 2, nodeHeight / 2);
-          // Folhas
-          leafPositions.add(Offset(maxWidth * 0.25, nodeHeight + levelGap));
-          leafPositions.add(Offset(maxWidth * 0.75, nodeHeight + levelGap));
-        } else { // n == 3
-          // Raiz
-          rootPosition = Offset(maxWidth / 2, nodeHeight / 2);
-          // Nível 1
-          level1Positions.add(Offset(maxWidth * 0.18, nodeHeight + levelGap));
-          level1Positions.add(Offset(maxWidth * 0.50, nodeHeight + levelGap));
-          level1Positions.add(Offset(maxWidth * 0.82, nodeHeight + levelGap));
-          // Folhas (Nível 2)
-          double leafY = nodeHeight * 2 + levelGap * 2;
-          for (int i = 0; i < 6; i++) {
-             leafPositions.add(Offset((maxWidth / 6) * (i + 0.5), leafY));
-          }
-        }
-        
-        // --- CRIAÇÃO DOS WIDGETS DE NÓS ---
-        
-        // Nó Raiz
-        nodes.add(
-          Positioned(
-            top: rootPosition.dy - nodeHeight / 2,
-            left: rootPosition.dx - nodeWidth / 2,
-            child: _MelodyNode(
-              melody: controller.selectedIcons.toList(),
-              width: nodeWidth,
-              height: nodeHeight,
-            ),
-          ),
-        );
-
-        // Nós do Nível 1 (apenas para n=3)
-        if (n == 3) {
-           for (int i = 0; i < 3; i++) {
-             nodes.add(
-              Positioned(
-                top: level1Positions[i].dy - nodeHeight / 2,
-                left: level1Positions[i].dx - nodeWidth / 2,
-                child: _MelodyNode(
-                  melody: controller.generatedMelodies[i*2], // Pega o primeiro de cada par
-                  width: nodeWidth,
-                  height: nodeHeight,
-                ),
-              ),
-            );
-           }
-        }
-
-        // Nós Folha (Resultados finais com botão de play)
-        for (int i = 0; i < controller.generatedMelodies.length; i++) {
-           nodes.add(
-              Positioned(
-                top: leafPositions[i].dy - nodeHeight / 2,
-                left: leafPositions[i].dx - leafNodeWidth / 2,
-                child: _MelodyNode(
-                  melody: controller.generatedMelodies[i],
-                  width: leafNodeWidth,
-                  height: nodeHeight,
-                  isLeaf: true,
-                  onPlay: () => controller.playMelody(i),
-                  isPlaying: controller.currentlyPlayingIndex == i,
-                ),
-              ),
-            );
-        }
-
-        return SingleChildScrollView(
-          child: SizedBox(
-            height: n == 2 ? 300 : 450, // Altura do canvas
-            width: maxWidth,
-            child: Stack(
-              children: [
-                // Desenho das linhas de conexão
-                CustomPaint(
-                  size: Size(maxWidth, n == 2 ? 300 : 450),
-                  painter: _TreePainter(
-                    root: rootPosition,
-                    level1: level1Positions,
-                    leaves: leafPositions,
-                    nodeHeight: nodeHeight,
-                  ),
-                ),
-                ...nodes, // Adiciona os nós (ícones) sobre o desenho
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// WIDGET PARA DESENHAR AS LINHAS DA ÁRVORE
-class _TreePainter extends CustomPainter {
-  final Offset root;
-  final List<Offset> level1;
-  final List<Offset> leaves;
-  final double nodeHeight;
-
-  _TreePainter({
-    required this.root,
-    required this.level1,
-    required this.leaves,
-    required this.nodeHeight,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.blue.shade700
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round;
-
-    Offset rootBottom = root.translate(0, nodeHeight / 2);
-
-    if (level1.isEmpty) { // Caso de 2 ícones
-      for (final leaf in leaves) {
-        canvas.drawLine(rootBottom, leaf.translate(0, -nodeHeight / 2), paint);
-      }
-    } else { // Caso de 3 ícones
-      // Linhas da Raiz para o Nível 1
-      for (final node in level1) {
-        canvas.drawLine(rootBottom, node.translate(0, -nodeHeight/2), paint);
-      }
-      // Linhas do Nível 1 para as Folhas
-      for (int i=0; i < level1.length; i++) {
-        Offset l1Bottom = level1[i].translate(0, nodeHeight/2);
-        canvas.drawLine(l1Bottom, leaves[i*2].translate(0, -nodeHeight/2), paint);
-        canvas.drawLine(l1Bottom, leaves[i*2+1].translate(0, -nodeHeight/2), paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// WIDGET PARA EXIBIR UM NÓ DA ÁRVORE (um conjunto de ícones)
-class _MelodyNode extends StatelessWidget {
-  final List<String> melody;
-  final double width;
-  final double height;
-  final bool isLeaf;
-  final bool isPlaying;
-  final VoidCallback? onPlay;
-
-  const _MelodyNode({
-    required this.melody,
-    required this.width,
-    required this.height,
-    this.isLeaf = false,
-    this.isPlaying = false,
-    this.onPlay,
-  });
-  
-  @override
-  Widget build(BuildContext context) {
-    final characterController = context.read<CharacterController>();
-    final typeParts = characterController.selectedCharacterType.split('_');
-    final gender = typeParts.isNotEmpty ? typeParts[0] : 'boy';
-    final tone = typeParts.length > 1 ? typeParts[1] : 'light';
-
-    return Container(
-      width: width,
-      height: height,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: isPlaying ? Colors.yellow.shade200 : Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.shade400, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          ...melody.map((iconType) {
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: Image.asset(
-                  (const MelodyGeneratorScreen())._getIconImagePath(iconType, gender, tone),
-                  fit: BoxFit.contain,
-                ),
-              ),
-            );
-          }).toList(),
-          if (isLeaf)
-            IconButton(
-              padding: EdgeInsets.zero,
-              icon: Icon(
-                isPlaying ? Icons.stop : Icons.play_arrow,
-                color: Colors.blue,
-              ),
-              onPressed: onPlay,
-            ),
-        ],
-      ),
-    );
   }
 }
 ----------------
 [user_interface\screens\memory_game_screen.dart]
 
 import 'package:Mathnew/services/memory_tutorial_service.dart';
+import 'package:Mathnew/user_interface/screens/about_memory_game_screen.dart';
+import 'package:Mathnew/user_interface/screens/instruction_memory_game_screen.dart';
+import 'package:Mathnew/user_interface/widgets/app_drawer_header.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/character_service.dart';
 import '../../services/memory_game_service.dart';
-import 'instruction_screen.dart';
+import 'score_history_screen.dart';
 import 'tanks_screen.dart';
-import 'about_screen.dart';
 
 class MemoryGameScreen extends StatefulWidget {
-  // PARÂMETROS PARA O TUTORIAL
   final GlobalKey? statusBarKey;
   final Map<String, GlobalKey>? cardKeys;
   final Function(String)? onCardTappedDuringTutorial;
@@ -3646,7 +4774,6 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Só foca se não estiver no modo tutorial
       if (widget.statusBarKey == null) {
         _statusFocusNode.requestFocus();
       }
@@ -3659,7 +4786,7 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
     super.dispose();
   }
 
- String _getIconImagePath(String iconType, String gender, String tone) {
+  String _getIconImagePath(String iconType, String gender, String tone) {
     String basePath = 'assets/images/buttons/button_';
     String imagePath;
 
@@ -3672,8 +4799,10 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
       case "BaterPerna":
       case "Gritar":
       case "Beijo":
-        String snakeCaseType = iconType.replaceAllMapped(RegExp(r'[A-Z]'),
-                (match) => '_${match.group(0)?.toLowerCase()}').substring(1);
+        String snakeCaseType = iconType
+            .replaceAllMapped(RegExp(r'[A-Z]'),
+                (match) => '_${match.group(0)?.toLowerCase()}')
+            .substring(1);
         imagePath = '$basePath${snakeCaseType}_${gender}_${tone}_transp.png';
         break;
       default:
@@ -3684,13 +4813,20 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
 
   String _getSemanticsLabelFromType(String type) {
     switch (type) {
-      case "BaterPe": return "Bater Pé";
-      case "BaterPalma": return "Bater Palma";
-      case "BaterPerna": return "Bater Perna";
-      case "BaterPeito": return "Bater Peito";
-      case "Gritar": return "Gritar";
-      case "Beijo": return "Mandar Beijo";        
-      default: return type;
+      case "BaterPe":
+        return "Bater Pé";
+      case "BaterPalma":
+        return "Bater Palma";
+      case "BaterPerna":
+        return "Bater Perna";
+      case "BaterPeito":
+        return "Bater Peito";
+      case "Gritar":
+        return "Gritar";
+      case "Beijo":
+        return "Mandar Beijo";
+      default:
+        return type;
     }
   }
 
@@ -3698,13 +4834,19 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
   Widget build(BuildContext context) {
     final geniusController = context.watch<GeniusGameController>();
     final characterController = context.read<CharacterController>();
-    
+    final tutorialController = context.watch<MemoryTutorialController?>();
+
     final typeParts = characterController.selectedCharacterType.split('_');
     final gender = typeParts.isNotEmpty ? typeParts[0] : 'boy';
     final tone = typeParts.length > 1 ? typeParts[1] : 'light';
 
+    final bool isExploringCardsTutorial =
+        tutorialController?.isTutorialActive == true &&
+            tutorialController?.activeCardTutorialType != null;
+ 
+
     return PopScope(
-      canPop: true, 
+      canPop: true,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) {
           context.read<GeniusGameController>().resetGame();
@@ -3715,20 +4857,7 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              const DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                ),
-                child: Center(
-                  child: Text(
-                    'Menu',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                    ),
-                  ),
-                ),
-              ),
+             const AppDrawerHeader(),
               ListTile(
                 leading: const Icon(Icons.home_filled, color: Colors.blue),
                 title: const Text('Escolha o Jogo'),
@@ -3737,13 +4866,28 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
                   Navigator.of(context).popUntil((route) => route.isFirst);
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.history, color: Colors.blue),
+                title: const Text('Histórico de Pontuação'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ScoreHistoryScreen()));
+                },
+              ),
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.help_outline, color: Colors.blue),
                 title: const Text('Instruções de Uso'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const InstructionsScreen()));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              const MemoryGameInstructionsScreen()));
                 },
               ),
               ListTile(
@@ -3751,7 +4895,10 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
                 title: const Text('Agradecimentos'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ThankYouScreen()));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ThankYouScreen()));
                 },
               ),
               ListTile(
@@ -3759,7 +4906,10 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
                 title: const Text('Sobre'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const MemoryGameAboutScreen()));
                 },
               ),
             ],
@@ -3770,51 +4920,78 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
           padding: const EdgeInsets.all(10.0),
           child: Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Builder(
-                    builder: (context) {
+              ExcludeSemantics(
+                excluding: isExploringCardsTutorial,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Builder(builder: (context) {
                       return Semantics(
                         label: 'Abrir menu de navegação',
                         button: true,
                         child: IconButton(
-                          icon: const Icon(Icons.menu, color: Colors.blue, size: 30),
+                          icon: const Icon(Icons.menu,
+                              color: Colors.blue, size: 30),
                           tooltip: "Abrir menu",
                           onPressed: () => Scaffold.of(context).openDrawer(),
                         ),
                       );
-                    }
-                  ),
-                  Text(
-                    'Nível: ${geniusController.score + 1}',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue.shade800),
-                  ),
-                ],
+                    }),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Nível: ${geniusController.score + 1}',
+                          style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepPurpleAccent[700]),
+                        ),
+                        const SizedBox(width: 24),
+                        Text(
+                          'Pontuação: ${geniusController.score}',
+                          style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.teal.shade700),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              
-              Container(
-                key: widget.statusBarKey,
-                child: _buildInGameStatus(geniusController),
+              ExcludeSemantics(
+                excluding: isExploringCardsTutorial,
+                child: Container(
+                  key: widget.statusBarKey,
+                  child: _buildInGameStatus(geniusController),
+                ),
               ),
 
               const SizedBox(height: 10),
-              
+
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     const double crossAxisSpacing = 15;
                     const double mainAxisSpacing = 15;
                     const int crossAxisCount = 3;
-                    final int itemCount = geniusController.availableIcons.length;
+                    final int itemCount =
+                        geniusController.availableIcons.length;
                     final int rowCount = (itemCount / crossAxisCount).ceil();
-                    final double itemWidth = (constraints.maxWidth - (crossAxisCount - 1) * crossAxisSpacing) / crossAxisCount;
-                    final double itemHeight = (constraints.maxHeight - (rowCount - 1) * mainAxisSpacing) / rowCount;
-                    if (itemHeight <= 0) { return const SizedBox.shrink(); }
+                    final double itemWidth = (constraints.maxWidth -
+                            (crossAxisCount - 1) * crossAxisSpacing) /
+                        crossAxisCount;
+                    final double itemHeight = (constraints.maxHeight -
+                            (rowCount - 1) * mainAxisSpacing) /
+                        rowCount;
+                    if (itemHeight <= 0) {
+                      return const SizedBox.shrink();
+                    }
                     final double aspectRatio = itemWidth / itemHeight;
-  
+
                     return GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(), 
+                      physics: const NeverScrollableScrollPhysics(),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: crossAxisCount,
                         mainAxisSpacing: mainAxisSpacing,
@@ -3824,62 +5001,96 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
                       itemCount: itemCount,
                       itemBuilder: (context, index) {
                         final iconType = geniusController.availableIcons[index];
-                        final isHighlighted = geniusController.currentlyPlayingIcon == iconType;
-                        final bool canTap = geniusController.gameState == GeniusGameState.waitingForInput;
+                        final isHighlighted =
+                            geniusController.currentlyPlayingIcon == iconType;
+                        final bool canTap = geniusController.gameState ==
+                            GeniusGameState.waitingForInput;
                         final bool isTapped = _tappedIconIndex == index;
-                        final tutorialActive = context.watch<MemoryTutorialController?>()?.isTutorialActive ?? false;
-final bool isTutorialMode = widget.onCardTappedDuringTutorial != null && tutorialActive;
-                        return GestureDetector(
-                          key: widget.cardKeys?[iconType],
-                          
-                          // LÓGICA DE TOQUE ATUALIZADA
-                          onTap: () {
-                            // O onTap é usado para a lógica principal do jogo ou do tutorial
-                            if (isTutorialMode) {
-                              widget.onCardTappedDuringTutorial!(iconType);
-                            } else if (canTap) {
-                              geniusController.handlePlayerInput(iconType);
-                            }
-                          },
-                          onTapDown: canTap || isTutorialMode ? (details) {
-                            setState(() { _tappedIconIndex = index; });
-                          } : null,
-                          onTapUp: canTap || isTutorialMode ? (details) {
-                            setState(() { _tappedIconIndex = null; });
-                          } : null,
-                          onTapCancel: canTap || isTutorialMode ? () {
-                            setState(() { _tappedIconIndex = null; });
-                          } : null,
-                          
-                          child: Semantics(
-                            label: _getSemanticsLabelFromType(iconType),
-                            hint: isTutorialMode
-                                ? 'Toque duas vezes para ouvir o som'
-                                : (canTap ? 'Toque duas vezes para jogar' : 'Aguarde sua vez'),
-                            value: isHighlighted ? 'Mostrando' : '',
-                            button: true,
-                            enabled: canTap || isTutorialMode,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              transform: isTapped ? (Matrix4.identity()..scale(0.9)) : Matrix4.identity(),
-                              transformAlignment: FractionalOffset.center,
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: isHighlighted ? Colors.yellow.shade600 : Colors.blue.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(15),
-                                border: isHighlighted ? Border.all(color: Colors.white, width: 4) : null,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(isHighlighted ? 0.4 : 0.2),
-                                    blurRadius: isHighlighted ? 8 : 4,
-                                    offset: Offset(0, isHighlighted ? 4 : 2),
+
+                        final bool isTutorialMode =
+                            tutorialController?.isTutorialActive ?? false;
+                        final String? activeCardType =
+                            tutorialController?.activeCardTutorialType;
+
+                        final bool shouldExcludeCard = isTutorialMode &&
+                            activeCardType != null &&
+                            activeCardType != iconType;
+
+                        return ExcludeSemantics(
+                          excluding: shouldExcludeCard,
+                          child: GestureDetector(
+                            key: widget.cardKeys?[iconType],
+                            onTap: () {
+                              if (widget.onCardTappedDuringTutorial != null &&
+                                  isTutorialMode) {
+                                widget.onCardTappedDuringTutorial!(iconType);
+                              } else if (canTap) {
+                                geniusController.handlePlayerInput(
+                                    iconType, context);
+                              }
+                            },
+                            onTapDown: canTap || isTutorialMode
+                                ? (details) {
+                                    setState(() {
+                                      _tappedIconIndex = index;
+                                    });
+                                  }
+                                : null,
+                            onTapUp: canTap || isTutorialMode
+                                ? (details) {
+                                    setState(() {
+                                      _tappedIconIndex = null;
+                                    });
+                                  }
+                                : null,
+                            onTapCancel: canTap || isTutorialMode
+                                ? () {
+                                    setState(() {
+                                      _tappedIconIndex = null;
+                                    });
+                                  }
+                                : null,
+                            child: Semantics(
+                              label: _getSemanticsLabelFromType(iconType),
+                              hint: isTutorialMode
+                                  ? 'Toque duas vezes para ouvir o som'
+                                  : (canTap
+                                      ? 'Toque duas vezes para jogar'
+                                      : 'Aguarde sua vez'),
+                              value: isHighlighted ? 'Mostrando' : '',
+                              button: true,
+                              enabled: canTap ||
+                                  (isTutorialMode && !shouldExcludeCard),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                transform: isTapped
+                                    ? (Matrix4.identity()..scale(0.9))
+                                    : Matrix4.identity(),
+                                transformAlignment: FractionalOffset.center,
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: isHighlighted
+                                      ? Colors.lightGreen.shade200
+                                      : Colors.blue.withOpacity(0.8),
+                                  borderRadius: BorderRadius.circular(15),
+                                  border: isHighlighted
+                                      ? Border.all(
+                                          color: Colors.white, width: 4)
+                                      : null,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(
+                                          isHighlighted ? 0.4 : 0.2),
+                                      blurRadius: isHighlighted ? 8 : 4,
+                                      offset: Offset(0, isHighlighted ? 4 : 2),
+                                    ),
+                                  ],
+                                ),
+                                child: ExcludeSemantics(
+                                  child: Image.asset(
+                                    _getIconImagePath(iconType, gender, tone),
+                                    fit: BoxFit.contain,
                                   ),
-                                ],
-                              ),
-                              child: ExcludeSemantics(
-                                child: Image.asset(
-                                  _getIconImagePath(iconType, gender, tone),
-                                  fit: BoxFit.contain,
                                 ),
                               ),
                             ),
@@ -3897,7 +5108,11 @@ final bool isTutorialMode = widget.onCardTappedDuringTutorial != null && tutoria
     );
   }
 
-  Widget _buildInGameStatus(GeniusGameController controller) {
+   Widget _buildInGameStatus(GeniusGameController controller) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final textStyleSize = (screenWidth * 0.035).clamp(18.0, 24.0);
+    final buttonTextStyleSize = (screenWidth * 0.03).clamp(16.0, 22.0);
+
     Widget leftSide;
     Widget rightSide = const SizedBox.shrink();
     bool isLive = false;
@@ -3905,29 +5120,46 @@ final bool isTutorialMode = widget.onCardTappedDuringTutorial != null && tutoria
 
     switch (controller.gameState) {
       case GeniusGameState.showingSequence:
-        leftSide = Text('Observe a sequência...', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500));
+        leftSide = Text(
+    'Ouça a sequência...',
+    semanticsLabel: 'Ouça a sequência.',
+    style: TextStyle(fontSize: textStyleSize, fontWeight: FontWeight.w500, color: Colors.blue[900]),
+  );
+        isLive = false;
+        break;
+        
+      case GeniusGameState.playerTurn:
+        leftSide = Text(
+          'Sua vez!',
+          style: TextStyle(fontSize: textStyleSize, fontWeight: FontWeight.w500, color: Colors.blue[900]),
+        );
         isLive = true;
         break;
+
       case GeniusGameState.waitingForInput:
         leftSide = Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.timer_outlined, color: Colors.blue.shade800),
+            Icon(Icons.timer_outlined, color: Colors.blue.shade800, size: textStyleSize * 1.2),
             const SizedBox(width: 8),
-            Text('${controller.countdown}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text('${controller.countdown}', style: TextStyle(fontSize: textStyleSize * 1.1, fontWeight: FontWeight.bold)),
           ],
         );
         isLive = true;
         break;
       case GeniusGameState.levelComplete:
-        leftSide = Text('Muito bem!', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500));
+        leftSide = Text('Muito bem!', style: TextStyle(fontSize: textStyleSize, fontWeight: FontWeight.w500, color: Colors.blue[900]));
         isLive = true;
         break;
       case GeniusGameState.notStarted:
-        leftSide = const Text('Pronto para começar?', style: TextStyle(fontSize: 18));
+        leftSide = Text('Pronto para começar?', style: TextStyle(fontSize: textStyleSize, fontWeight: FontWeight.w500, color: Colors.blue[900]));
         rightSide = ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(16.0, 32.0), vertical: 8),
+            textStyle: TextStyle(fontSize: buttonTextStyleSize, fontWeight: FontWeight.bold),
+          ),
+          onPressed: () => controller.startGame(context),
           child: const Text('Iniciar'),
-          onPressed: () => controller.startGame(),
         );
         rightSideSemantics = Semantics(
           label: 'Botão Iniciar Jogo',
@@ -3937,10 +5169,14 @@ final bool isTutorialMode = widget.onCardTappedDuringTutorial != null && tutoria
         );
         break;
       case GeniusGameState.gameOver:
-        leftSide = Text('Fim de Jogo! Pontuação: ${controller.score}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500));
+        leftSide = Text('Fim de Jogo! Pontuação: ${controller.score}', style: TextStyle(fontSize: textStyleSize, fontWeight: FontWeight.w500, color: Colors.blue[900]));
         rightSide = ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(16.0, 32.0), vertical: 8),
+            textStyle: TextStyle(fontSize: buttonTextStyleSize, fontWeight: FontWeight.bold),
+          ),
+          onPressed: () => controller.startGame(context),
           child: const Text('Jogar Novamente'),
-          onPressed: () => controller.startGame(),
         );
         rightSideSemantics = Semantics(
           label: 'Botão Jogar Novamente',
@@ -3974,13 +5210,13 @@ final bool isTutorialMode = widget.onCardTappedDuringTutorial != null && tutoria
     );
   }
 }
+
 ----------------
 [user_interface\screens\orientation_screen.dart]
 
 import 'package:flutter/material.dart';
 import '../../services/orientation_service.dart';
-// IMPORTE A HOMESCREEN
-import 'home_screen.dart';
+import 'character_selection_screen.dart';
 
 class OrientationScreen extends StatelessWidget {
   const OrientationScreen({super.key});
@@ -3991,7 +5227,7 @@ class OrientationScreen extends StatelessWidget {
     if (context.mounted) {
       // MUDE A NAVEGAÇÃO PARA A HOMESCREEN
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) =>  const CharacterSelectionScreen(isInitialSelection: true)),
       );
     }
   }
@@ -4407,6 +5643,75 @@ class SavedRowsScreen extends StatelessWidget {
   }
 }
 ----------------
+[user_interface\screens\score_history_screen.dart]
+
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../services/score_history_service.dart';
+
+class ScoreHistoryScreen extends StatelessWidget {
+  const ScoreHistoryScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Histórico de Pontuação'),
+        backgroundColor: Colors.blue,
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Container(
+        color: const Color.fromRGBO(220, 247, 255, 1.0),
+        child: Consumer<ScoreHistoryService>(
+          builder: (context, historyService, child) {
+            if (historyService.scores.isEmpty) {
+              return const Center(
+                child: Text(
+                  'Nenhuma pontuação salva ainda.',
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                ),
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(8.0),
+              itemCount: historyService.scores.length,
+              itemBuilder: (context, index) {
+                final entry = historyService.scores[index];
+                // Formata a data e hora para exibição
+                final formattedDate = DateFormat('dd/MM/yyyy – HH:mm').format(entry.date);
+
+                return Card(
+                  elevation: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.emoji_events,
+                      color: Colors.amber.shade700,
+                      size: 40,
+                    ),
+                    title: Text(
+                      'Pontuação: ${entry.score}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    subtitle: Text('Nível alcançado: ${entry.level}'),
+                    trailing: Text(
+                      formattedDate,
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+----------------
 [user_interface\screens\tanks_screen.dart]
 
 import 'package:flutter/material.dart';
@@ -4515,7 +5820,6 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   @override
   void initState() {
     super.initState();
-    // Inicia o tutorial assim que a tela for construída
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final tutorialController = context.read<MemoryTutorialController>();
       final gameController = context.read<GeniusGameController>();
@@ -4527,137 +5831,110 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   Widget build(BuildContext context) {
     final tutorial = context.watch<MemoryTutorialController>();
 
-   // ➜ Quando o tutorial NÃO está ativo, não passe callbacks do tutorial.
-  if (!tutorial.isTutorialActive) {
-    return const MemoryGameScreen(); // nova instância “limpa”
-  }
+    if (!tutorial.isTutorialActive) {
+      return const MemoryGameScreen();
+    }
 
-  // ➜ Enquanto o tutorial está ativo, injete as chaves e o callback
-  final gameScreen = MemoryGameScreen(
-    statusBarKey: tutorial.statusKey,
-    cardKeys: tutorial.cardKeys,
-    onCardTappedDuringTutorial: (iconType) {
-      tutorial.playCardSound(iconType);
-    },
-  );
+    final gameScreen = MemoryGameScreen(
+      statusBarKey: tutorial.statusKey,
+      cardKeys: tutorial.cardKeys,
+      onCardTappedDuringTutorial: (iconType) {
+        tutorial.playCardSound(iconType);
+      },
+    );
 
-    // Se o tutorial ESTÁ ativo, empilhamos o overlay por cima do jogo.
+    final bool isExploringCards = tutorial.activeCardTutorialType != null;
+
     return Stack(
       children: [
-        gameScreen, // Camada 1: O jogo
-        _buildTutorialLayer(tutorial), // Camada 2: O tutorial
+        ExcludeSemantics(
+          excluding: tutorial.isTutorialActive && !isExploringCards,
+          child: gameScreen,
+        ),
+        _buildTutorialLayer(tutorial),
       ],
     );
   }
 
   Widget _buildTutorialLayer(MemoryTutorialController tutorial) {
-    return Stack(
-      children: [
-        GestureDetector(
-          onTap: () {
-            // Se o passo NÃO for interativo (o usuário não deve clicar no item destacado),
-            // qualquer toque na área escura avançará para o próximo passo.
-            if (!tutorial.canTapHighlightedItem) {
-              tutorial.nextStep();
-            }
-          },
-          child: ClipPath(
-            clipper: HoleClipper(tutorial.highlightRect),
-            child: Container(
-              color: Colors.black.withOpacity(0.75),
+    final bool isLastStep = tutorial.currentStepIndex == tutorial.totalSteps - 1;
+    return Semantics(
+      label: 'Camada do tutorial',
+       scopesRoute: true, 
+       explicitChildNodes: true, 
+      child: Stack(
+        children: [
+          GestureDetector(
+            onTap: () {},
+            child: ClipPath(
+              clipper: HoleClipper(tutorial.highlightRect),
+              child: Container(
+                color: Colors.black.withOpacity(0.75),
+              ),
             ),
           ),
-        ),
-        IgnorePointer(
-          child: _buildGuidanceBox(tutorial),
-        ),
-        _buildNextButton(tutorial),
-        _buildSkipButton(tutorial),
-      ],
+          IgnorePointer(
+            child: _buildGuidanceBox(tutorial),
+          ),
+          if (!isLastStep) _buildNextButton(tutorial),
+          if (!isLastStep) _buildSkipButton(tutorial),
+          if (isLastStep) _buildFinishButton(tutorial),
+        ],
+      ),
     );
   }
-
+  
   Widget _buildGuidanceBox(MemoryTutorialController tutorial) {
-    if (tutorial.highlightRect == null) {
+    if (tutorial.guidanceAlignment == Alignment.center) {
       return Center(
         child: Container(
           padding: const EdgeInsets.all(24),
-          margin: const EdgeInsets.symmetric(horizontal: 32),
+          margin: const EdgeInsets.symmetric(horizontal: 40),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(15),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                spreadRadius: 2,
-              )
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, spreadRadius: 2,)],
           ),
           child: Text(
             tutorial.guidanceText,
-            // ====================== MODIFICAÇÃO DE ESTILO AQUI ======================
-            style: const TextStyle(
-              fontSize: 18, 
-              color: Colors.blueAccent, // Cor do texto mudada para azul
-              fontWeight: FontWeight.bold,
-              decoration: TextDecoration.none, // Garante que não haja sublinhado
-            ),
-             textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, color: Colors.blueAccent, fontWeight: FontWeight.bold, decoration: TextDecoration.none),
+            textAlign: TextAlign.center,
+          ),
         ),
-      ),);
+      );
     }
-    
+  
     final rect = tutorial.highlightRect!;
     final screenHeight = MediaQuery.of(context).size.height;
-
     bool isBelow = tutorial.guidanceAlignment == Alignment.topCenter;
-    double top = isBelow ? rect.bottom + 20 : rect.top - 120;
-
+    
+    double top = isBelow ? rect.bottom + 30 : rect.top - 120;
+   
     if (top < 10) top = 10;
     if (top > screenHeight - 110) top = screenHeight - 110;
     
     return Positioned(
       top: top,
-      left: 20,
-      right: 20,
+      left: 30,
+      right: 30,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 8,
-            )
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8,)],
         ),
         child: Text(
           tutorial.guidanceText,
-          // ====================== MODIFICAÇÃO DE ESTILO AQUI ======================
-          style: const TextStyle(
-            fontSize: 16, 
-            color: Colors.blueAccent, // Cor do texto mudada para azul
-            decoration: TextDecoration.none, // Garante que não haja sublinhado
-          ),
-          // =====================================================================
+          style: const TextStyle(fontSize: 16, color: Colors.blueAccent, decoration: TextDecoration.none),
           textAlign: TextAlign.center,
         ),
       ),
     );
   }
-  
-  // ====================== MÉTODO CORRIGIDO ======================
+ 
   Widget _buildNextButton(MemoryTutorialController tutorial) {
-    // Definimos explicitamente quais passos devem mostrar um botão
-    bool isWelcomeStep = tutorial.guidanceText.contains('Bem-vindo');
-    bool isExploreStep = tutorial.guidanceText.contains("Toque duas vezes nele para ouvir o som");
-
-    // Se não for nem o passo de boas-vindas, nem um passo de exploração, não mostra o botão.
-    if (!isWelcomeStep && !isExploreStep) {
-      return const SizedBox.shrink();
-    }
+    final bool isWelcomeStep = tutorial.currentStepIndex == 0;
     
     return Positioned(
       bottom: 20,
@@ -4671,12 +5948,24 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
       ),
     );
   }
-  // =============================================================
+  
+  Widget _buildFinishButton(MemoryTutorialController tutorial) {
+    return Positioned(
+      bottom: 20,
+      right: 20,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueAccent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        ),
+        onPressed: () => tutorial.skipTutorial(context),
+        child: const Text('Finalizar Tutorial'),
+      ),
+    );
+  }
 
   Widget _buildSkipButton(MemoryTutorialController tutorial) {
-    if (!tutorial.isTutorialActive) {
-      return const SizedBox.shrink();
-    }
     return Positioned(
       bottom: 20,
       left: 20,
@@ -4686,6 +5975,101 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
           'Pular Tutorial',
           style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
         ),
+      ),
+    );
+  }
+}
+----------------
+[user_interface\widgets\app_drawer_header.dart]
+
+import 'package:flutter/material.dart';
+
+class AppDrawerHeader extends StatelessWidget {
+  const AppDrawerHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DrawerHeader(
+      // Removemos o padding padrão para ter mais controle com o Stack
+      padding: EdgeInsets.zero,
+      decoration: const BoxDecoration(
+        color: Colors.blue,
+      ),
+      child: Stack(
+        children: [
+          // Conteúdo principal centralizado
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Semantics(
+                  child: const Text(
+                    'Apoio',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 1), // Aumentei um pouco o espaço
+                Semantics(
+                  label:
+                      'Logotipos dos apoiadores: IFSP, CNPQ e RUMO à Educação Matemática Inclusiva',
+                  child: Container(
+                    padding: const EdgeInsets.all(10.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(2, 4))
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      // Usamos Flexible para os logos se ajustarem melhor
+                      children: [
+                        Flexible(
+                          child: Image.asset('assets/images/IFSP_Logo.png',
+                              height: 70, fit: BoxFit.contain),
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Image.asset('assets/images/CNPQ_Logo.png',
+                              height: 70, fit: BoxFit.contain),
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Image.asset('assets/images/RUMO_Logo.png',
+                              height: 70, fit: BoxFit.contain),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Botão de fechar posicionado no canto superior direito
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Semantics(
+              label: 'Botão de Fechar menu',
+              button: true,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                tooltip: 'Fechar menu',
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

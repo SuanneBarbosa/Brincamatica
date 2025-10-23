@@ -1,7 +1,9 @@
+// lib/user_interface/screens/about_generator_screen.dart
+
 import 'package:flutter/material.dart';
 
-class MemoryGameAboutScreen extends StatelessWidget {
-  const MemoryGameAboutScreen({super.key});
+class AboutGeneratorScreen extends StatelessWidget {
+  const AboutGeneratorScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +39,7 @@ class MemoryGameAboutScreen extends StatelessWidget {
           children: [
             const Center(
               child: Text(
-                'Jogo da Memória',
+                'Gerador de Sons e Imagens',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 26,
@@ -59,26 +61,23 @@ class MemoryGameAboutScreen extends StatelessWidget {
             const Divider(height: 30),
             _buildSectionTitle('O que é?'),
             const Text(
-              'Um jogo de memória auditiva e visual: ouça a sequência de sons/ícones e repita na mesma ordem. '
-              'A cada nível a sequência cresce e o desafio aumenta.',
+              'Um jogo interativo para explorar combinações de sons! Selecione seus sons favoritos e o jogo gerará todas as melodias possíveis para você ouvir e tentar replicar.',
               style: TextStyle(fontSize: 16, height: 1.4),
             ),
             const SizedBox(height: 16),
             _buildSectionTitle('Principais Funcionalidades'),
-            _buildFeatureItem(Icons.visibility_outlined, 'Ouça a sequência:',
-                'os cartões são destacados um a um e seus sons são reproduzidos automaticamente para você memorizar a ordem.'),
-            _buildFeatureItem(Icons.touch_app_outlined, 'Repita na sua vez:',
-                'quando a exibição termina, toque nos cartões na mesma ordem apresentada. Um cronômetro no topo indica o tempo restante.'),
+            _buildFeatureItem(Icons.music_note_outlined, 'Selecione os Sons:',
+                'Escolha 2 ou 3 sons da nossa biblioteca para começar a brincadeira.'),
+            _buildFeatureItem(Icons.shuffle, 'Geração Automática:',
+                'O aplicativo cria todas as combinações de melodias possíveis com os sons que você escolheu.'),
+            _buildFeatureItem(
+                Icons.touch_app_outlined,
+                'Desafio Interativo:',
+                'Tente recriar as melodias tocando nos sons na ordem correta. O jogo dá feedback instantâneo se você acertou ou errou.'),
             _buildFeatureItem(
                 Icons.trending_up_outlined,
-                'Progressão de níveis:',
-                'a cada acerto a sequência ganha um novo som, aumentando gradualmente a dificuldade e sua pontuação.'),
-            _buildFeatureItem(
-                Icons.volume_up_outlined,
-                'Feedback sonoro e visual:',
-                'cada cartão possui um som próprio (palmas, assobio, batidas, etc.) e realce visual durante a exibição e a sua jogada.'),
-            _buildFeatureItem(Icons.accessibility_new, 'Acessibilidade:',
-                'indicadores de estado são anunciados por leitor de tela (ex.: “Ouça a sequência”, “Sua vez”) e os cartões têm rótulos semânticos claros.'),
+                'Modo Desafio:',
+                'Enfrente níveis de dificuldade crescente, começando com melodias simples e avançando para sequências mais complexas e sem dicas visuais.'),
           ],
         ),
       ),

@@ -1,7 +1,7 @@
 name: Mathnew
 description: "A new Flutter project."
 publish_to: 'none' 
-version: 1.2.0+2
+version: 1.3.0+2
 
 environment:
   sdk: ^3.5.3
@@ -16,7 +16,10 @@ dependencies:
   just_audio: ^0.9.42
   shared_preferences: ^2.0.15
   async: ^2.9.0
-
+  intl: ^0.19.0
+  scrollable_positioned_list: ^0.3.8
+  collection: ^1.18.0
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -52,7 +55,10 @@ flutter:
     - assets/sounds/gritar.mp3
     - assets/sounds/estalarLingua1.mp3
     - assets/sounds/estalarLingua2.mp3 
-    - assets/sounds/beijo.mp3 
+    - assets/sounds/beijo.mp3
+    - assets/sounds/correto.mp3
+    - assets/sounds/errado.mp3 
+
    
   fonts:
     - family: Poppins

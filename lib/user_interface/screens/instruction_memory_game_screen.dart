@@ -19,7 +19,7 @@ class MemoryGameInstructionsScreen extends StatelessWidget {
             _buildInstructionItem(
               title: 'Objetivo do jogo',
               description:
-                  'Observe a sequência de sons e reproduza na mesma ordem tocando os botões correspondentes. A cada nível, a sequência fica mais longa e a velocidade pode aumentar.',
+                  'Ouça a sequência de sons e reproduza na mesma ordem tocando os botões correspondentes. A cada nível, a sequência fica mais longa e a velocidade pode aumentar.',
               semanticsDescription:
                   'Seu objetivo é repetir a sequência de sons na ordem correta.',
             ),
@@ -33,7 +33,7 @@ class MemoryGameInstructionsScreen extends StatelessWidget {
             _buildInstructionItem(
               title: 'Durante a exibição da sequência',
               description:
-                  'Enquanto aparecer “Observe a sequência...”, os botões ficam desativados. Fique atento à luz/realce dos cartões e aos sons correspondentes.',
+                  'Enquanto aparecer “Ouça a sequência.”, os botões ficam desativados. Fique atento à luz/realce dos cartões e aos sons correspondentes.',
               semanticsDescription:
                   'Enquanto a sequência é exibida, os botões não podem ser tocados.',
             ),
@@ -47,9 +47,9 @@ class MemoryGameInstructionsScreen extends StatelessWidget {
             _buildInstructionItem(
               title: 'Cronômetro',
               description:
-                  'O cronômetro aparece no painel superior durante a sua jogada. Cada toque correto reinicia o tempo para a próxima entrada da sequência.',
+                  'O cronômetro aparece no painel superior durante a sua jogada. Você tem 10 segundos para o primeiro toque de cada nível e 3 segundos para os toques seguintes na mesma rodada. Se o tempo acabar, o jogo termina.',
               semanticsDescription:
-                  'O cronômetro fica no painel superior durante sua vez.',
+                  'O cronômetro fica no painel superior durante sua vez, com 10 segundos para o primeiro toque e 3 para os demais.',
             ),
             _buildInstructionItem(
               title: 'Pontuação e níveis',
