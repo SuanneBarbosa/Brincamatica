@@ -732,14 +732,13 @@ class IconController extends ChangeNotifier {
 
 // lib/services/melody_generator_service.dart
 import 'package:flutter/material.dart';
-import 'package:collection/collection.dart'; // Adicione esta importação para comparar listas
+import 'package:collection/collection.dart';
 import 'audio_service.dart';
 
-// --- NOVO: Classe para modelar cada nível do jogo ---
 class GameLevel {
   final int iconCount;
   final bool withRepetition;
-  final bool hasHint; // Define se o primeiro ícone é mostrado ou se são todos '?'
+  final bool hasHint;
 
   GameLevel({
     required this.iconCount,
@@ -748,13 +747,12 @@ class GameLevel {
   });
 }
 
-// --- ATUALIZADO: Adicionado 'playingLevels' e 'levelComplete' ---
 enum GeneratorState {
   selectingIcons,
   selectingMode,
-  playingFreePlay, // Renomeado de playingGame para clareza
-  playingLevels,   // Novo estado para o modo de desafio
-  levelComplete,   // Estado intermediário para mostrar feedback
+  playingFreePlay,
+  playingLevels,
+  levelComplete,
   gameWon,
 }
 
@@ -770,62 +768,51 @@ class MelodyGeneratorController extends ChangeNotifier {
   MelodyGeneratorController({required AudioService audioService})
       : _audioService = audioService;
 
-  // --- Definição dos Níveis do Jogo ---
   final List<GameLevel> _levels = [
-    // Bloco 1: Sem Repetição
-    GameLevel(iconCount: 2, withRepetition: false, hasHint: true),  // Nível 1: Dois ícones sem repetição com dica
-    GameLevel(iconCount: 3, withRepetition: false, hasHint: true),  // Nível 2: Três ícones sem repetição com dica
-    GameLevel(iconCount: 2, withRepetition: false, hasHint: false), // Nível 3: Dois ícones sem repetição sem dica
-    GameLevel(iconCount: 3, withRepetition: false, hasHint: false), // Nível 4: Três ícones sem repetição sem dica
-
-    // Bloco 2: Com Repetição
-    GameLevel(iconCount: 2, withRepetition: true, hasHint: true),   // Nível 5: Dois ícones com repetição com dica
-    GameLevel(iconCount: 3, withRepetition: true, hasHint: true),   // Nível 6: Três ícones com repetição com dica
-    GameLevel(iconCount: 2, withRepetition: true, hasHint: false),  // Nível 7: Dois ícones com repetição sem dica
-    GameLevel(iconCount: 3, withRepetition: true, hasHint: false),  // Nível 8: Três ícones com repetição sem dica
+    GameLevel(iconCount: 2, withRepetition: false, hasHint: true),
+    GameLevel(iconCount: 3, withRepetition: false, hasHint: true),
+    GameLevel(iconCount: 2, withRepetition: false, hasHint: false),
+    GameLevel(iconCount: 3, withRepetition: false, hasHint: false),
+    GameLevel(iconCount: 2, withRepetition: true, hasHint: true),
+    GameLevel(iconCount: 3, withRepetition: true, hasHint: true),
+    GameLevel(iconCount: 2, withRepetition: true, hasHint: false),
+    GameLevel(iconCount: 3, withRepetition: true, hasHint: false),
   ];
 
-  // --- Estado do Jogo ---
   GeneratorState _state = GeneratorState.selectingIcons;
   Set<String> _selectedIcons = {};
   List<List<String>> _generatedMelodies = [];
   int? _currentlyPlayingIndex;
-
-  // --- Variáveis para a Lógica do Jogo ---
   List<String> _currentUserInput = [];
   List<bool> _completedMelodies = [];
-  int _currentTargetMelodyIndex = 0;
   ValidationState _validationState = ValidationState.neutral;
-  
-  // --- NOVAS Variáveis para o Modo de Níveis ---
   int _currentLevelIndex = 0;
   List<String> _activeIconsForCurrentLevel = [];
+  
+  // <<< NOVO: Para rastrear o último item encontrado >>>
+  int? _mostRecentFoundIndex;
 
-  // --- Getters Públicos ---
   GeneratorState get state => _state;
   Set<String> get selectedIcons => _selectedIcons;
   List<List<String>> get generatedMelodies => _generatedMelodies;
   int? get currentlyPlayingIndex => _currentlyPlayingIndex;
   List<String> get currentUserInput => _currentUserInput;
   List<bool> get completedMelodies => _completedMelodies;
-  int get currentTargetMelodyIndex => _currentTargetMelodyIndex;
   ValidationState get validationState => _validationState;
-  
-  // Getters para o modo de níveis
   bool get isLevelsMode => _state == GeneratorState.playingLevels || _state == GeneratorState.levelComplete;
   int get currentLevelIndex => _currentLevelIndex;
   GameLevel get currentLevel => _levels[_currentLevelIndex];
   int get totalLevels => _levels.length;
   List<String> get activeIconsForLevel => _activeIconsForCurrentLevel;
-
+  
+  // <<< NOVO GETTER >>>
+  int? get mostRecentFoundIndex => _mostRecentFoundIndex;
 
   final List<String> availableIcons = [
     "BaterPalma", "BaterPe", "BaterPeito", "BaterPerna",
     "Gritar", "Beijo", "Assobiar", "EstalarDedo",
     "EstalarLingua1", "EstalarLingua2"
   ];
-
-  // --- Ações do Usuário ---
 
   void toggleIconSelection(String iconType) {
     if (_selectedIcons.contains(iconType)) {
@@ -845,24 +832,17 @@ class MelodyGeneratorController extends ChangeNotifier {
     }
   }
 
-  // --- Lógica de Início de Jogo ---
-
   void startFreePlayMode(bool withRepetition) {
     final items = _selectedIcons.toList();
     _activeIconsForCurrentLevel = items;
-    
-    if (withRepetition) {
-      _generatedMelodies = _generatePermutationsWithRepetition(items, items.length);
-    } else {
-      _generatedMelodies = _generatePermutationsWithoutRepetition(items);
-    }
-
+    _generatedMelodies = withRepetition
+        ? _generatePermutationsWithRepetition(items, items.length)
+        : _generatePermutationsWithoutRepetition(items);
     _generatedMelodies.sort((a, b) => a.join().compareTo(b.join()));
     _completedMelodies = List<bool>.generate(_generatedMelodies.length, (_) => false);
     _currentUserInput = [];
-    _currentTargetMelodyIndex = 0;
     _validationState = ValidationState.neutral;
-
+    _mostRecentFoundIndex = null;
     _state = GeneratorState.playingFreePlay;
     notifyListeners();
   }
@@ -874,73 +854,57 @@ class MelodyGeneratorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Ações do Jogo Interativo ---
-
   void handleIconTap(String iconType) {
     if (_validationState == ValidationState.incorrect || _state == GeneratorState.gameWon || _state == GeneratorState.levelComplete) return;
 
-    _currentUserInput.add(iconType);
-    _playIconSound(iconType);
-    _validateInput();
+    final int targetLength = _generatedMelodies.isNotEmpty ? _generatedMelodies.first.length : 0;
+    if (_currentUserInput.length < targetLength) {
+      _currentUserInput.add(iconType);
+      _playIconSound(iconType);
+      _validateInput();
+      notifyListeners();
+    }
+  }
+
+  void clearUserInput() {
+    _currentUserInput.clear();
+    _validationState = ValidationState.neutral;
     notifyListeners();
   }
-  
-  void clearUserInput() {
-      _currentUserInput.clear();
-      _validationState = ValidationState.neutral;
-      notifyListeners();
-  }
-  
+
   void _validateInput() {
     if (_generatedMelodies.isEmpty) return;
-
     final int targetLength = _generatedMelodies.first.length;
-    
-    if (_currentUserInput.length != targetLength) {
-      return; 
-    }
-    
+    if (_currentUserInput.length != targetLength) return;
+
     int? matchedIndex;
     for (int i = 0; i < _generatedMelodies.length; i++) {
-        if (!_completedMelodies[i] &&
-            const ListEquality().equals(_generatedMelodies[i], _currentUserInput)) {
-            matchedIndex = i;
-            break; 
-        }
+      if (!_completedMelodies[i] && const ListEquality().equals(_generatedMelodies[i], _currentUserInput)) {
+        matchedIndex = i;
+        break;
+      }
     }
 
     if (matchedIndex != null) {
-      // --- RESPOSTA CORRETA ---
       _validationState = ValidationState.correct;
-      // <<< ALTERAÇÃO AQUI: Tocar som de acerto usando o novo método de feedback >>>
-      // Isso evita que o som do ícone seja cortado.
       _audioService.playFeedbackAudio('assets/sounds/correto.mp3');
       _completedMelodies[matchedIndex] = true;
-
-      _currentTargetMelodyIndex = matchedIndex; 
+      // <<< ALTERAÇÃO: Armazena o índice do item recém-encontrado >>>
+      _mostRecentFoundIndex = matchedIndex;
       notifyListeners();
 
       Future.delayed(const Duration(milliseconds: 800), () {
-        if(_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
-
-        _currentUserInput.clear(); 
+        if (_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
+        _currentUserInput.clear();
         _validationState = ValidationState.neutral;
-        
-        _findNextTarget(); 
         notifyListeners();
       });
-
     } else {
-      // --- RESPOSTA INCORRETA ---
       _validationState = ValidationState.incorrect;
-      // <<< ALTERAÇÃO AQUI: Tocar som de erro usando o novo método de feedback >>>
-      // Isso evita que o som do ícone seja cortado.
       _audioService.playFeedbackAudio('assets/sounds/errado.mp3');
       notifyListeners();
-      
       Future.delayed(const Duration(milliseconds: 800), () {
-        if(_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
-
+        if (_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
         _currentUserInput.clear();
         _validationState = ValidationState.neutral;
         notifyListeners();
@@ -948,39 +912,34 @@ class MelodyGeneratorController extends ChangeNotifier {
     }
   }
 
-  void _findNextTarget() {
-    int nextIndex = _completedMelodies.indexWhere((completed) => !completed);
-    
-    if (nextIndex != -1) {
-      _currentTargetMelodyIndex = nextIndex;
-    } else {
-      // Todos foram completados
-      if (isLevelsMode) {
-        _advanceToNextLevel();
-      } else {
-        _state = GeneratorState.gameWon;
+  void finalizeRound() {
+      if (areAllCombinationsFound()) {
+          if (isLevelsMode) {
+            _advanceToNextLevel();
+          } else {
+            _state = GeneratorState.gameWon;
+          }
+          notifyListeners();
       }
-    }
   }
 
-  // --- NOVAS Funções para o Modo de Níveis ---
+  bool areAllCombinationsFound() {
+    if (_completedMelodies.isEmpty) return false;
+    return _completedMelodies.every((completed) => completed);
+  }
 
   void _setupCurrentLevel() {
     final level = _levels[_currentLevelIndex];
     final itemsForLevel = _selectedIcons.toList().sublist(0, level.iconCount);
     _activeIconsForCurrentLevel = itemsForLevel;
-
-    if (level.withRepetition) {
-      _generatedMelodies = _generatePermutationsWithRepetition(itemsForLevel, level.iconCount);
-    } else {
-      _generatedMelodies = _generatePermutationsWithoutRepetition(itemsForLevel);
-    }
-    
+    _generatedMelodies = level.withRepetition
+        ? _generatePermutationsWithRepetition(itemsForLevel, level.iconCount)
+        : _generatePermutationsWithoutRepetition(itemsForLevel);
     _generatedMelodies.sort((a, b) => a.join().compareTo(b.join()));
     _completedMelodies = List<bool>.generate(_generatedMelodies.length, (_) => false);
     _currentUserInput = [];
-    _currentTargetMelodyIndex = 0;
     _validationState = ValidationState.neutral;
+    _mostRecentFoundIndex = null;
   }
 
   void _advanceToNextLevel() {
@@ -989,7 +948,6 @@ class MelodyGeneratorController extends ChangeNotifier {
     } else {
       _state = GeneratorState.gameWon;
     }
-    notifyListeners();
   }
 
   void proceedToNextLevel() {
@@ -999,19 +957,14 @@ class MelodyGeneratorController extends ChangeNotifier {
     notifyListeners();
   }
 
-
-  Future<void> playMelody(int index) async {
+  Future<void> playMelody(List<String> melody) async {
     if (_currentlyPlayingIndex != null) return;
-
-    final melody = _generatedMelodies[index];
-    _currentlyPlayingIndex = index;
+    _currentlyPlayingIndex = -1;
     notifyListeners();
-
     for (final iconType in melody) {
       await _playIconSound(iconType);
       await Future.delayed(const Duration(milliseconds: 600));
     }
-
     _currentlyPlayingIndex = null;
     notifyListeners();
   }
@@ -1023,14 +976,12 @@ class MelodyGeneratorController extends ChangeNotifier {
     _currentlyPlayingIndex = null;
     _currentUserInput.clear();
     _completedMelodies.clear();
-    _currentTargetMelodyIndex = 0;
     _validationState = ValidationState.neutral;
     _currentLevelIndex = 0;
     _activeIconsForCurrentLevel.clear();
+    _mostRecentFoundIndex = null;
     notifyListeners();
   }
-
-  // --- Lógica de Geração (Combinatória) ---
 
   List<List<String>> _generatePermutationsWithoutRepetition(List<String> items) {
     List<List<String>> result = [];
@@ -1070,8 +1021,6 @@ class MelodyGeneratorController extends ChangeNotifier {
     return result;
   }
 
-  // --- Funções Auxiliares ---
-  
   Future<void> _playIconSound(String type) async {
     String? soundPath;
     switch (type) {
@@ -2651,21 +2600,24 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // <<< ALTERAÇÃO: Obtendo a altura da tela para o espaçamento >>>
+    final screenHeight = MediaQuery.of(context).size.height;
+    // Calcula um espaçamento vertical responsivo
+    final buttonSpacing = (screenHeight * 0.03).clamp(16.0, 24.0);
+
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false, // evita foco desnecessário no "voltar"
+        automaticallyImplyLeading: false,
         title: Semantics(
-          // faz o TalkBack anunciar o título ao abrir a rota
           namesRoute: true,
           header: true,
-          child: Text('Escolha o Jogo'),
+          child: const Text('Escolha o Jogo'),
         ),
         backgroundColor: Colors.blue,
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
         actions: [
-          // Botão "Trocar Personagem" com descrição acessível
           FocusTraversalOrder(
-            order: const NumericFocusOrder(99), // deixa por último na ordem
+            order: const NumericFocusOrder(99),
             child: Semantics(
               button: true,
               label: 'Trocar personagem',
@@ -2688,93 +2640,109 @@ class HomeScreen extends StatelessWidget {
       ),
       body: Container(
         color: const Color.fromRGBO(220, 247, 255, 1.0),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            // Controle explícito da ordem de foco/leitura
-            child: FocusTraversalGroup(
-              policy: OrderedTraversalPolicy(),
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 24,
-                runSpacing: 24,
-                children: [
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(1),
-                    child: _buildGameButton(
-                      context: context,
-                      label: 'Criar Melodia',
-                      icon: Icons.music_note,
-                      semanticsLabel: 'Criar Melodia',
-                      semanticsHint:
-                          'Abre o jogo para criar melodias.',
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Mathicon(),
+        width: double.infinity,
+        height: double.infinity,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 24.0, horizontal: 16.0),
+                    child: FocusTraversalGroup(
+                      policy: OrderedTraversalPolicy(),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          FocusTraversalOrder(
+                            order: const NumericFocusOrder(1),
+                            child: _buildGameButton(
+                              context: context,
+                              label: 'Criar Melodia',
+                              icon: Icons.music_note,
+                              semanticsLabel: 'Criar Melodia',
+                              semanticsHint:
+                                  'Abre o jogo para criar melodias.',
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const Mathicon(),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(2),
-                    child: _buildGameButton(
-                      context: context,
-                      label: 'Jogo da Memória',
-                      icon: Icons.memory,
-                      semanticsLabel: 'Jogo da Memória',
-                      semanticsHint:
-                          'Abre o jogo da memória. Caso seja a primeira vez, o tutorial será mostrado.',
-                      onPressed: () async {
-                        final orientationService = OrientationService();
-                        final bool tutorialShown = await orientationService
-                            .hasShownMemoryGameTutorial();
+                          SizedBox(height: buttonSpacing), // <<< ALTERAÇÃO: Espaçamento dinâmico
+                          FocusTraversalOrder(
+                            order: const NumericFocusOrder(2),
+                            child: _buildGameButton(
+                              context: context,
+                              label: 'Jogo da Memória',
+                              icon: Icons.memory,
+                              semanticsLabel: 'Jogo da Memória',
+                              semanticsHint:
+                                  'Abre o jogo da memória. Caso seja a primeira vez, o tutorial será mostrado.',
+                              onPressed: () async {
+                                final orientationService =
+                                    OrientationService();
+                                final bool tutorialShown =
+                                    await orientationService
+                                        .hasShownMemoryGameTutorial();
 
-                        if (context.mounted) {
-                          if (tutorialShown) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const MemoryGameScreen(),
-                              ),
-                            );
-                          } else {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const TutorialOverlay(),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                  ),
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(1),
-                    child: _buildGameButton(
-                      context: context,
-                      label: 'Combina Som',
-                      icon: Icons.music_note,
-                      semanticsLabel: 'Combina Som',
-                      semanticsHint:
-                          'Abre o jogo Combina Som.',
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const MelodyGeneratorScreen(),
+                                if (context.mounted) {
+                                  if (tutorialShown) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const MemoryGameScreen(),
+                                      ),
+                                    );
+                                  } else {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const TutorialOverlay(),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
                           ),
-                        );
-                      },
+                          SizedBox(height: buttonSpacing), // <<< ALTERAÇÃO: Espaçamento dinâmico
+                          FocusTraversalOrder(
+                            order: const NumericFocusOrder(3),
+                            child: _buildGameButton(
+                              context: context,
+                              label: 'Combina Som',
+                              icon: Icons.compost,
+                              semanticsLabel: 'Combina Som',
+                              semanticsHint: 'Abre o jogo Combina Som.',
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const MelodyGeneratorScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -2788,28 +2756,42 @@ class HomeScreen extends StatelessWidget {
     String? semanticsLabel,
     String? semanticsHint,
   }) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(
-        minWidth: 260,
-        maxWidth: 300,
-        minHeight: 80,
-      ),
+    // <<< ALTERAÇÃO: Lógica para tamanhos dinâmicos >>>
+    final mediaQuery = MediaQuery.of(context);
+    final screenWidth = mediaQuery.size.width;
+    final screenHeight = mediaQuery.size.height;
+
+    // A largura do botão será 75% da largura da tela, mas no máximo 400px e no mínimo 280px.
+    final buttonWidth = (screenWidth * 0.75).clamp(280.0, 400.0);
+    
+    // O padding vertical (que define a altura) será 2.5% da altura da tela, com limites.
+    final verticalPadding = (screenHeight * 0.025).clamp(16.0, 24.0);
+    
+    // O tamanho do ícone será 8% da largura do botão, com limites.
+    final iconSize = (buttonWidth * 0.08).clamp(28.0, 34.0);
+    
+    // O tamanho da fonte será 6% da largura do botão, com limites.
+    final fontSize = (buttonWidth * 0.06).clamp(18.0, 24.0);
+
+    return SizedBox(
+      width: buttonWidth, // Usa a largura calculada
       child: Semantics(
         button: true,
         label: semanticsLabel ?? label,
         hint: semanticsHint ?? 'Toque para abrir $label.',
         child: ElevatedButton.icon(
-          icon: Icon(icon, size: 32),
+          icon: Icon(icon, size: iconSize), // Usa o tamanho de ícone calculado
           label: Text(label),
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
             foregroundColor: Colors.white,
             backgroundColor: Colors.blueAccent,
+            padding: EdgeInsets.symmetric(vertical: verticalPadding), // Usa o padding calculado
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            textStyle: const TextStyle(
-              fontSize: 24,
+            textStyle: TextStyle(
+              fontSize: fontSize, // Usa o tamanho de fonte calculado
               fontWeight: FontWeight.bold,
             ),
             elevation: 5,
@@ -2819,7 +2801,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-
 ----------------
 [user_interface\screens\instruction_memory_game_screen.dart]
 
@@ -4017,7 +3998,6 @@ class _MathiconState extends State<Mathicon> {
 [user_interface\screens\melody_generator_screen.dart]
 
 // lib/user_interface/screens/melody_generator_screen.dart
-
 import 'package:Mathnew/user_interface/screens/tanks_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -4036,11 +4016,11 @@ class MelodyGeneratorScreen extends StatefulWidget {
 }
 
 class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
-  final ItemScrollController _itemScrollController = ItemScrollController();
-  final ItemPositionsListener _itemPositionsListener =
-      ItemPositionsListener.create();
-  int _previousTargetIndex = 0;
   GeneratorState? _previousState;
+  
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
+  int? _previousMostRecentIndex;
 
   AppBar _buildAppBar(
       BuildContext context, MelodyGeneratorController controller) {
@@ -4062,7 +4042,11 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
               onPressed: () => Scaffold.of(context).openDrawer(),
             ),
           ),
-          title: const Text('Selecione 2 ou 3 sons'),
+          title: const Text('Selecione 2 ou 3 sons',
+              style: TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.blue)),
           centerTitle: true,
           actions: [
             Padding(
@@ -4070,13 +4054,14 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
               child: Center(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
                     textStyle: const TextStyle(fontWeight: FontWeight.bold),
                     backgroundColor: canConfirm ? Colors.blue : Colors.grey,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: canConfirm ? controller.confirmIconSelection : null,
+                  onPressed:
+                      canConfirm ? controller.confirmIconSelection : null,
                   child: const Text('Confirmar'),
                 ),
               ),
@@ -4094,7 +4079,11 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
             tooltip: "Voltar para seleção",
             onPressed: controller.reset,
           ),
-          title: const Text('Escolha um modo de jogo'),
+          title: const Text('Escolha um modo de jogo',
+              style: TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.blue)),
           centerTitle: true,
         );
 
@@ -4139,25 +4128,34 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
         _showGameWonDialog(context);
       }
       _previousState = controller.state;
-    });
-
-    // A lógica de rolagem volta a ser a da versão de duas colunas
-    final targetRowIndex = (controller.currentTargetMelodyIndex / 2).floor();
-    if ((controller.state == GeneratorState.playingFreePlay || controller.state == GeneratorState.playingLevels) &&
-        targetRowIndex != (_previousTargetIndex / 2).floor()) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _itemScrollController.isAttached) {
+      
+      if (controller.mostRecentFoundIndex != null &&
+          controller.mostRecentFoundIndex != _previousMostRecentIndex) {
+        
+        List<int> indicesToShow = [];
+        for (int i = 0; i < controller.generatedMelodies.length; i++) {
+          if (i == 0 || controller.completedMelodies[i]) {
+            indicesToShow.add(i);
+          }
+        }
+        
+        final listPosition = indicesToShow.indexOf(controller.mostRecentFoundIndex!);
+        if (listPosition != -1 && _itemScrollController.isAttached) {
+          final targetRowIndex = (listPosition / 2).floor();
           _itemScrollController.scrollTo(
             index: targetRowIndex,
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeInOutCubic,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
           );
+        }
+
+        if (mounted) {
           setState(() {
-            _previousTargetIndex = controller.currentTargetMelodyIndex;
+            _previousMostRecentIndex = controller.mostRecentFoundIndex;
           });
         }
-      });
-    }
+      }
+    });
 
     return PopScope(
       canPop: controller.state == GeneratorState.selectingIcons,
@@ -4186,7 +4184,7 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-         const AppDrawerHeader(),
+          const AppDrawerHeader(),
           ListTile(
             leading: const Icon(Icons.home_filled, color: Colors.blue),
             title: const Text('Escolha o Jogo'),
@@ -4231,12 +4229,10 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
     );
   }
 
-  // <<< INÍCIO DA ALTERAÇÃO >>>
-  // Esta função foi modificada para ser responsiva.
   void _showGameWonDialog(BuildContext context) {
     final controller = context.read<MelodyGeneratorController>();
-    final bool wonLevels =
-        controller.isLevelsMode || _previousState == GeneratorState.levelComplete;
+    final bool wonLevels = controller.isLevelsMode ||
+        _previousState == GeneratorState.levelComplete;
 
     showDialog(
       context: context,
@@ -4247,8 +4243,6 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           title: Center(
               child: Text(wonLevels ? 'Desafio Completo!' : 'Parabéns!')),
-          // ALTERAÇÃO 1: Adicionado SingleChildScrollView
-          // Garante que o conteúdo possa rolar se a tela for muito pequena.
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -4271,9 +4265,8 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
               icon: const Icon(Icons.refresh),
               label: const Text('Jogar Novamente'),
               style: ElevatedButton.styleFrom(
-                // ALTERAÇÃO 2: Removido 'minimumSize' e adicionado 'padding' flexível.
-                // O botão agora pode encolher em telas menores.
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 textStyle: const TextStyle(fontSize: 16),
               ),
               onPressed: () {
@@ -4288,7 +4281,6 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
       },
     );
   }
-  // <<< FIM DA ALTERAÇÃO >>>
 
   Widget _buildScreenForState(
       BuildContext context, MelodyGeneratorController controller) {
@@ -4361,14 +4353,16 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
         return SingleChildScrollView(
           child: Container(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
             child: Column(
               key: const ValueKey('modeSelection'),
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ElevatedButton.icon(
                   icon: const Icon(Icons.emoji_events),
-                  label: const Text('Desafio por Níveis', style: TextStyle(fontSize: 18)),
+                  label: const Text('Desafio por Níveis',
+                      style: TextStyle(fontSize: 18)),
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(280, 55),
                     backgroundColor: canPlayLevels ? Colors.amber : Colors.grey,
@@ -4376,8 +4370,8 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
                   onPressed: canPlayLevels ? controller.startLevelsMode : null,
                 ),
                 if (!canPlayLevels)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8.0),
                     child: Text(
                       '(requer 3 sons selecionados)',
                       textAlign: TextAlign.center,
@@ -4387,15 +4381,19 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.play_circle_fill),
-                  label: const Text('Sem Repetição', style: TextStyle(fontSize: 18)),
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(280, 55)),
+                  label:
+                      const Text('Sem Repetição', style: TextStyle(fontSize: 18)),
+                  style:
+                      ElevatedButton.styleFrom(minimumSize: const Size(280, 55)),
                   onPressed: () => controller.startFreePlayMode(false),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.replay_circle_filled),
-                  label: const Text('Com Repetição', style: TextStyle(fontSize: 18)),
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(280, 55)),
+                  label:
+                      const Text('Com Repetição', style: TextStyle(fontSize: 18)),
+                  style:
+                      ElevatedButton.styleFrom(minimumSize: const Size(280, 55)),
                   onPressed: () => controller.startFreePlayMode(true),
                 ),
               ],
@@ -4440,12 +4438,12 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
     final tone = typeParts.length > 1 ? typeParts[1] : 'light';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8.0, 0, 8.0, 8.0),
+      padding: const EdgeInsets.fromLTRB(8.0, 8.0, 8.0, 8.0),
       child: Column(
         key: const ValueKey('gameScreen'),
         children: [
           Expanded(
-            child: _buildMelodyList(controller, gender, tone),
+            child: _buildFoundMelodiesList(controller, gender, tone),
           ),
           const Divider(thickness: 1.5, height: 8),
           _buildInteractionArea(context, controller, gender, tone),
@@ -4460,7 +4458,7 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildUserInputDisplay(controller, gender, tone),
+          _buildUserInputDisplay(context, controller, gender, tone),
           const SizedBox(height: 8),
           _buildIconInputPanel(controller, gender, tone),
         ],
@@ -4468,36 +4466,55 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
     );
   }
 
-  Widget _buildMelodyList(
+  Widget _buildFoundMelodiesList(
       MelodyGeneratorController controller, String gender, String tone) {
-    final melodies = controller.generatedMelodies;
-    final rowCount = (melodies.length / 2).ceil();
-    // Pega a largura da tela para passar para os itens filhos
-    final screenWidth = MediaQuery.of(context).size.width;
+    
+    if (controller.generatedMelodies.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
+    List<int> indicesToShow = [];
+    for (int i = 0; i < controller.generatedMelodies.length; i++) {
+      if (i == 0 || controller.completedMelodies[i]) {
+        indicesToShow.add(i);
+      }
+    }
+    
+    if (indicesToShow.isEmpty) {
+        return const Center(
+          child: Text(
+            "Carregando combinações...",
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        );
+    }
+    
+    final rowCount = (indicesToShow.length / 2).ceil();
+    
     return ScrollablePositionedList.builder(
       itemCount: rowCount,
       itemScrollController: _itemScrollController,
       itemPositionsListener: _itemPositionsListener,
       itemBuilder: (context, rowIndex) {
-        final int item1Index = rowIndex * 2;
-        final int item2Index = item1Index + 1;
+        final int item1ListIndex = rowIndex * 2;
+        final int item2ListIndex = item1ListIndex + 1;
+
+        final int originalIndex1 = indicesToShow[item1ListIndex];
 
         final Widget item1 = _buildMelodyItemWidget(
           controller: controller,
-          index: item1Index,
+          originalIndex: originalIndex1,
           gender: gender,
           tone: tone,
-          screenWidth: screenWidth, // Passa a largura da tela
         );
 
-        if (item2Index < melodies.length) {
+        if (item2ListIndex < indicesToShow.length) {
+          final int originalIndex2 = indicesToShow[item2ListIndex];
           final Widget item2 = _buildMelodyItemWidget(
             controller: controller,
-            index: item2Index,
+            originalIndex: originalIndex2,
             gender: gender,
             tone: tone,
-            screenWidth: screenWidth, // Passa a largura da tela
           );
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -4510,9 +4527,8 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
         } else {
           return Row(
             children: [
-              const Spacer(flex: 1),
-              Expanded(flex: 2, child: item1),
-              const Spacer(flex: 1),
+              Expanded(child: item1),
+              const Spacer(), 
             ],
           );
         }
@@ -4522,64 +4538,59 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
 
   Widget _buildMelodyItemWidget({
     required MelodyGeneratorController controller,
-    required int index,
+    required int originalIndex,
     required String gender,
     required String tone,
-    required double screenWidth, // Novo parâmetro
   }) {
-    // MUDANÇA AQUI: Calcula os tamanhos dinamicamente
-    // Define um tamanho para o ícone da melodia, com limites mínimo e máximo
+    final melody = controller.generatedMelodies[originalIndex];
+    final bool isCompleted = controller.completedMelodies[originalIndex];
+    final bool showHint = controller.isLevelsMode ? controller.currentLevel.hasHint : true;
+    
+    final bool isMostRecent = controller.mostRecentFoundIndex == originalIndex;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     final double iconSize = (screenWidth * 0.05).clamp(28.0, 40.0);
-    // Define o tamanho para os ícones de status (check) e play
     final double leadingIconSize = (screenWidth * 0.04).clamp(24.0, 30.0);
     final double trailingIconSize = (screenWidth * 0.045).clamp(26.0, 32.0);
-    // Reduz o espaçamento entre os ícones em telas menores
     final double iconSpacing = (screenWidth * 0.01).clamp(4.0, 8.0);
-
-    final melody = controller.generatedMelodies[index];
-    final isPlaying = controller.currentlyPlayingIndex == index;
-    final isCompleted = controller.completedMelodies[index];
-    final isCurrentTarget = controller.currentTargetMelodyIndex == index;
-    final bool showHint = controller.isLevelsMode ? controller.currentLevel.hasHint : true;
-
+    
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      color: isCurrentTarget ? Colors.yellow.shade100 : Colors.white,
-      elevation: isCurrentTarget ? 4 : 2,
+      color: isMostRecent ? Colors.yellow.shade100 : Colors.white,
+      elevation: isMostRecent ? 4 : 2,
       child: ListTile(
-        // MUDANÇA AQUI: Deixa o ListTile mais compacto
         visualDensity: VisualDensity.compact,
         contentPadding: const EdgeInsets.symmetric(horizontal: 6.0),
-
         leading: Icon(
           isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
           color: isCompleted ? Colors.green : Colors.grey,
-          size: leadingIconSize, // Tamanho dinâmico
+          size: leadingIconSize,
         ),
         title: Wrap(
-          spacing: iconSpacing, // Espaçamento dinâmico
+          spacing: iconSpacing,
           runSpacing: 4.0,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             if (isCompleted)
-              ...melody.map((iconType) =>
-                  Image.asset(_getIconImagePath(iconType, gender, tone), height: iconSize)) // Tamanho dinâmico
+              ...melody.map((iconType) => Image.asset(
+                  _getIconImagePath(iconType, gender, tone),
+                  height: iconSize))
             else ...[
               if (showHint)
-                Image.asset(_getIconImagePath(melody.first, gender, tone), height: iconSize) // Tamanho dinâmico
+                Image.asset(_getIconImagePath(melody.first, gender, tone), height: iconSize)
               else
-                _buildHiddenIcon(size: iconSize), // Tamanho dinâmico
-              ...List.generate(melody.length - 1, (_) => _buildHiddenIcon(size: iconSize)), // Tamanho dinâmico
+                _buildHiddenIcon(size: iconSize),
+              ...List.generate(melody.length - 1, (_) => _buildHiddenIcon(size: iconSize)),
             ]
           ],
         ),
         trailing: IconButton(
           icon: Icon(
-            isPlaying ? Icons.stop_circle_outlined : Icons.play_circle_outline,
+            Icons.play_circle_outline,
             color: Colors.blue,
-            size: trailingIconSize, // Tamanho dinâmico
+            size: trailingIconSize,
           ),
-          onPressed: () => controller.playMelody(index),
+          onPressed: () => controller.playMelody(melody),
         ),
       ),
     );
@@ -4596,12 +4607,12 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
       child: Icon(
         Icons.question_mark_rounded,
         color: Colors.grey.shade600,
-        size: size * 0.6, // Ícone interno também é proporcional
+        size: size * 0.6,
       ),
     );
   }
 
-  Widget _buildUserInputDisplay(
+  Widget _buildUserInputDisplay(BuildContext context,
       MelodyGeneratorController controller, String gender, String tone) {
     Color feedbackColor;
     switch (controller.validationState) {
@@ -4616,44 +4627,113 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
         break;
     }
     const double iconHeight = 36.0;
-    const double minContainerHeight = 48.0;
+    const double minContainerHeight = 52.0;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-      constraints: const BoxConstraints(minHeight: minContainerHeight),
-      decoration: BoxDecoration(
-          color: feedbackColor,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.shade400)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: controller.currentUserInput.isEmpty
-                ? Center(
-                    child: Text(
-                      "Toque nos sons abaixo...",
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  )
-                : Wrap(
-                    spacing: 6.0,
-                    runSpacing: 4.0,
-                    alignment: WrapAlignment.center,
-                    children: controller.currentUserInput.map((iconType) {
-                      return Image.asset(
-                          _getIconImagePath(iconType, gender, tone),
-                          height: iconHeight);
-                    }).toList(),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              constraints: const BoxConstraints(minHeight: minContainerHeight),
+              decoration: BoxDecoration(
+                  color: feedbackColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade400)),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: controller.currentUserInput.isEmpty
+                        ? const Center(
+                            child: Text(
+                              "Toque nos sons abaixo para formar as combinações.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          )
+                        : Wrap(
+                            spacing: 6.0,
+                            runSpacing: 4.0,
+                            alignment: WrapAlignment.center,
+                            children:
+                                controller.currentUserInput.map((iconType) {
+                              return Image.asset(
+                                  _getIconImagePath(iconType, gender, tone),
+                                  height: iconHeight);
+                            }).toList(),
+                          ),
                   ),
+                  if (controller.currentUserInput.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.backspace_outlined),
+                      onPressed: controller.clearUserInput,
+                      tooltip: "Limpar entrada",
+                    )
+                ],
+              ),
+            ),
           ),
-          if (controller.currentUserInput.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.backspace_outlined),
-              onPressed: controller.clearUserInput,
-              tooltip: "Limpar entrada",
-            )
+          const SizedBox(width: 8),
+          SizedBox(
+            height: minContainerHeight,
+            child: ElevatedButton(
+              onPressed: () {
+                if (controller.areAllCombinationsFound()) {
+                  controller.finalizeRound();
+                } else {
+                  // <<< ALTERAÇÃO APLICADA AQUI >>>
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext dialogContext) {
+                      return AlertDialog(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15)),
+                        title: const Center(child: Text("Atenção")),
+                        content: const SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.warning_amber_rounded,
+                                  color: Colors.orange, size: 70),
+                              SizedBox(height: 16),
+                              Text(
+                                "Faltam combinações para serem descobertas!",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 17),
+                              ),
+                            ],
+                          ),
+                        ),
+                        actionsAlignment: MainAxisAlignment.center,
+                        actions: <Widget>[
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.arrow_back),
+                            label: const Text("Voltar"),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
+                              textStyle: const TextStyle(fontSize: 16),
+                            ),
+                            onPressed: () {
+                              Navigator.of(dialogContext).pop();
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10))),
+              child: const Text("Confirmar"),
+            ),
+          ),
         ],
       ),
     );
@@ -4662,7 +4742,7 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
   Widget _buildIconInputPanel(
       MelodyGeneratorController controller, String gender, String tone) {
     final screenWidth = MediaQuery.of(context).size.width;
-    
+
     final iconCount = controller.activeIconsForLevel.length;
     if (iconCount == 0) return const SizedBox.shrink();
 
@@ -4725,8 +4805,8 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
       case "EstalarLingua1":
       case "EstalarLingua2":
         String snakeCaseType = iconType
-            .replaceAllMapped(
-                RegExp(r'[A-Z]'), (match) => '_${match.group(0)?.toLowerCase()}')
+            .replaceAllMapped(RegExp(r'[A-Z]'),
+                (match) => '_${match.group(0)?.toLowerCase()}')
             .substring(1);
         imagePath = '$basePath${snakeCaseType}_${gender}_${tone}_transp.png';
         break;

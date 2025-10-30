@@ -1,13 +1,12 @@
 // lib/services/melody_generator_service.dart
 import 'package:flutter/material.dart';
-import 'package:collection/collection.dart'; // Adicione esta importação para comparar listas
+import 'package:collection/collection.dart';
 import 'audio_service.dart';
 
-// --- NOVO: Classe para modelar cada nível do jogo ---
 class GameLevel {
   final int iconCount;
   final bool withRepetition;
-  final bool hasHint; // Define se o primeiro ícone é mostrado ou se são todos '?'
+  final bool hasHint;
 
   GameLevel({
     required this.iconCount,
@@ -16,13 +15,12 @@ class GameLevel {
   });
 }
 
-// --- ATUALIZADO: Adicionado 'playingLevels' e 'levelComplete' ---
 enum GeneratorState {
   selectingIcons,
   selectingMode,
-  playingFreePlay, // Renomeado de playingGame para clareza
-  playingLevels,   // Novo estado para o modo de desafio
-  levelComplete,   // Estado intermediário para mostrar feedback
+  playingFreePlay,
+  playingLevels,
+  levelComplete,
   gameWon,
 }
 
@@ -38,62 +36,51 @@ class MelodyGeneratorController extends ChangeNotifier {
   MelodyGeneratorController({required AudioService audioService})
       : _audioService = audioService;
 
-  // --- Definição dos Níveis do Jogo ---
   final List<GameLevel> _levels = [
-    // Bloco 1: Sem Repetição
-    GameLevel(iconCount: 2, withRepetition: false, hasHint: true),  // Nível 1: Dois ícones sem repetição com dica
-    GameLevel(iconCount: 3, withRepetition: false, hasHint: true),  // Nível 2: Três ícones sem repetição com dica
-    GameLevel(iconCount: 2, withRepetition: false, hasHint: false), // Nível 3: Dois ícones sem repetição sem dica
-    GameLevel(iconCount: 3, withRepetition: false, hasHint: false), // Nível 4: Três ícones sem repetição sem dica
-
-    // Bloco 2: Com Repetição
-    GameLevel(iconCount: 2, withRepetition: true, hasHint: true),   // Nível 5: Dois ícones com repetição com dica
-    GameLevel(iconCount: 3, withRepetition: true, hasHint: true),   // Nível 6: Três ícones com repetição com dica
-    GameLevel(iconCount: 2, withRepetition: true, hasHint: false),  // Nível 7: Dois ícones com repetição sem dica
-    GameLevel(iconCount: 3, withRepetition: true, hasHint: false),  // Nível 8: Três ícones com repetição sem dica
+    GameLevel(iconCount: 2, withRepetition: false, hasHint: true),
+    GameLevel(iconCount: 3, withRepetition: false, hasHint: true),
+    GameLevel(iconCount: 2, withRepetition: false, hasHint: false),
+    GameLevel(iconCount: 3, withRepetition: false, hasHint: false),
+    GameLevel(iconCount: 2, withRepetition: true, hasHint: true),
+    GameLevel(iconCount: 3, withRepetition: true, hasHint: true),
+    GameLevel(iconCount: 2, withRepetition: true, hasHint: false),
+    GameLevel(iconCount: 3, withRepetition: true, hasHint: false),
   ];
 
-  // --- Estado do Jogo ---
   GeneratorState _state = GeneratorState.selectingIcons;
   Set<String> _selectedIcons = {};
   List<List<String>> _generatedMelodies = [];
   int? _currentlyPlayingIndex;
-
-  // --- Variáveis para a Lógica do Jogo ---
   List<String> _currentUserInput = [];
   List<bool> _completedMelodies = [];
-  int _currentTargetMelodyIndex = 0;
   ValidationState _validationState = ValidationState.neutral;
-  
-  // --- NOVAS Variáveis para o Modo de Níveis ---
   int _currentLevelIndex = 0;
   List<String> _activeIconsForCurrentLevel = [];
+  
+  // <<< NOVO: Para rastrear o último item encontrado >>>
+  int? _mostRecentFoundIndex;
 
-  // --- Getters Públicos ---
   GeneratorState get state => _state;
   Set<String> get selectedIcons => _selectedIcons;
   List<List<String>> get generatedMelodies => _generatedMelodies;
   int? get currentlyPlayingIndex => _currentlyPlayingIndex;
   List<String> get currentUserInput => _currentUserInput;
   List<bool> get completedMelodies => _completedMelodies;
-  int get currentTargetMelodyIndex => _currentTargetMelodyIndex;
   ValidationState get validationState => _validationState;
-  
-  // Getters para o modo de níveis
   bool get isLevelsMode => _state == GeneratorState.playingLevels || _state == GeneratorState.levelComplete;
   int get currentLevelIndex => _currentLevelIndex;
   GameLevel get currentLevel => _levels[_currentLevelIndex];
   int get totalLevels => _levels.length;
   List<String> get activeIconsForLevel => _activeIconsForCurrentLevel;
-
+  
+  // <<< NOVO GETTER >>>
+  int? get mostRecentFoundIndex => _mostRecentFoundIndex;
 
   final List<String> availableIcons = [
     "BaterPalma", "BaterPe", "BaterPeito", "BaterPerna",
     "Gritar", "Beijo", "Assobiar", "EstalarDedo",
     "EstalarLingua1", "EstalarLingua2"
   ];
-
-  // --- Ações do Usuário ---
 
   void toggleIconSelection(String iconType) {
     if (_selectedIcons.contains(iconType)) {
@@ -113,24 +100,17 @@ class MelodyGeneratorController extends ChangeNotifier {
     }
   }
 
-  // --- Lógica de Início de Jogo ---
-
   void startFreePlayMode(bool withRepetition) {
     final items = _selectedIcons.toList();
     _activeIconsForCurrentLevel = items;
-    
-    if (withRepetition) {
-      _generatedMelodies = _generatePermutationsWithRepetition(items, items.length);
-    } else {
-      _generatedMelodies = _generatePermutationsWithoutRepetition(items);
-    }
-
+    _generatedMelodies = withRepetition
+        ? _generatePermutationsWithRepetition(items, items.length)
+        : _generatePermutationsWithoutRepetition(items);
     _generatedMelodies.sort((a, b) => a.join().compareTo(b.join()));
     _completedMelodies = List<bool>.generate(_generatedMelodies.length, (_) => false);
     _currentUserInput = [];
-    _currentTargetMelodyIndex = 0;
     _validationState = ValidationState.neutral;
-
+    _mostRecentFoundIndex = null;
     _state = GeneratorState.playingFreePlay;
     notifyListeners();
   }
@@ -142,73 +122,57 @@ class MelodyGeneratorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Ações do Jogo Interativo ---
-
   void handleIconTap(String iconType) {
     if (_validationState == ValidationState.incorrect || _state == GeneratorState.gameWon || _state == GeneratorState.levelComplete) return;
 
-    _currentUserInput.add(iconType);
-    _playIconSound(iconType);
-    _validateInput();
+    final int targetLength = _generatedMelodies.isNotEmpty ? _generatedMelodies.first.length : 0;
+    if (_currentUserInput.length < targetLength) {
+      _currentUserInput.add(iconType);
+      _playIconSound(iconType);
+      _validateInput();
+      notifyListeners();
+    }
+  }
+
+  void clearUserInput() {
+    _currentUserInput.clear();
+    _validationState = ValidationState.neutral;
     notifyListeners();
   }
-  
-  void clearUserInput() {
-      _currentUserInput.clear();
-      _validationState = ValidationState.neutral;
-      notifyListeners();
-  }
-  
+
   void _validateInput() {
     if (_generatedMelodies.isEmpty) return;
-
     final int targetLength = _generatedMelodies.first.length;
-    
-    if (_currentUserInput.length != targetLength) {
-      return; 
-    }
-    
+    if (_currentUserInput.length != targetLength) return;
+
     int? matchedIndex;
     for (int i = 0; i < _generatedMelodies.length; i++) {
-        if (!_completedMelodies[i] &&
-            const ListEquality().equals(_generatedMelodies[i], _currentUserInput)) {
-            matchedIndex = i;
-            break; 
-        }
+      if (!_completedMelodies[i] && const ListEquality().equals(_generatedMelodies[i], _currentUserInput)) {
+        matchedIndex = i;
+        break;
+      }
     }
 
     if (matchedIndex != null) {
-      // --- RESPOSTA CORRETA ---
       _validationState = ValidationState.correct;
-      // <<< ALTERAÇÃO AQUI: Tocar som de acerto usando o novo método de feedback >>>
-      // Isso evita que o som do ícone seja cortado.
       _audioService.playFeedbackAudio('assets/sounds/correto.mp3');
       _completedMelodies[matchedIndex] = true;
-
-      _currentTargetMelodyIndex = matchedIndex; 
+      // <<< ALTERAÇÃO: Armazena o índice do item recém-encontrado >>>
+      _mostRecentFoundIndex = matchedIndex;
       notifyListeners();
 
       Future.delayed(const Duration(milliseconds: 800), () {
-        if(_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
-
-        _currentUserInput.clear(); 
+        if (_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
+        _currentUserInput.clear();
         _validationState = ValidationState.neutral;
-        
-        _findNextTarget(); 
         notifyListeners();
       });
-
     } else {
-      // --- RESPOSTA INCORRETA ---
       _validationState = ValidationState.incorrect;
-      // <<< ALTERAÇÃO AQUI: Tocar som de erro usando o novo método de feedback >>>
-      // Isso evita que o som do ícone seja cortado.
       _audioService.playFeedbackAudio('assets/sounds/errado.mp3');
       notifyListeners();
-      
       Future.delayed(const Duration(milliseconds: 800), () {
-        if(_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
-
+        if (_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
         _currentUserInput.clear();
         _validationState = ValidationState.neutral;
         notifyListeners();
@@ -216,39 +180,34 @@ class MelodyGeneratorController extends ChangeNotifier {
     }
   }
 
-  void _findNextTarget() {
-    int nextIndex = _completedMelodies.indexWhere((completed) => !completed);
-    
-    if (nextIndex != -1) {
-      _currentTargetMelodyIndex = nextIndex;
-    } else {
-      // Todos foram completados
-      if (isLevelsMode) {
-        _advanceToNextLevel();
-      } else {
-        _state = GeneratorState.gameWon;
+  void finalizeRound() {
+      if (areAllCombinationsFound()) {
+          if (isLevelsMode) {
+            _advanceToNextLevel();
+          } else {
+            _state = GeneratorState.gameWon;
+          }
+          notifyListeners();
       }
-    }
   }
 
-  // --- NOVAS Funções para o Modo de Níveis ---
+  bool areAllCombinationsFound() {
+    if (_completedMelodies.isEmpty) return false;
+    return _completedMelodies.every((completed) => completed);
+  }
 
   void _setupCurrentLevel() {
     final level = _levels[_currentLevelIndex];
     final itemsForLevel = _selectedIcons.toList().sublist(0, level.iconCount);
     _activeIconsForCurrentLevel = itemsForLevel;
-
-    if (level.withRepetition) {
-      _generatedMelodies = _generatePermutationsWithRepetition(itemsForLevel, level.iconCount);
-    } else {
-      _generatedMelodies = _generatePermutationsWithoutRepetition(itemsForLevel);
-    }
-    
+    _generatedMelodies = level.withRepetition
+        ? _generatePermutationsWithRepetition(itemsForLevel, level.iconCount)
+        : _generatePermutationsWithoutRepetition(itemsForLevel);
     _generatedMelodies.sort((a, b) => a.join().compareTo(b.join()));
     _completedMelodies = List<bool>.generate(_generatedMelodies.length, (_) => false);
     _currentUserInput = [];
-    _currentTargetMelodyIndex = 0;
     _validationState = ValidationState.neutral;
+    _mostRecentFoundIndex = null;
   }
 
   void _advanceToNextLevel() {
@@ -257,7 +216,6 @@ class MelodyGeneratorController extends ChangeNotifier {
     } else {
       _state = GeneratorState.gameWon;
     }
-    notifyListeners();
   }
 
   void proceedToNextLevel() {
@@ -267,19 +225,14 @@ class MelodyGeneratorController extends ChangeNotifier {
     notifyListeners();
   }
 
-
-  Future<void> playMelody(int index) async {
+  Future<void> playMelody(List<String> melody) async {
     if (_currentlyPlayingIndex != null) return;
-
-    final melody = _generatedMelodies[index];
-    _currentlyPlayingIndex = index;
+    _currentlyPlayingIndex = -1;
     notifyListeners();
-
     for (final iconType in melody) {
       await _playIconSound(iconType);
       await Future.delayed(const Duration(milliseconds: 600));
     }
-
     _currentlyPlayingIndex = null;
     notifyListeners();
   }
@@ -291,14 +244,12 @@ class MelodyGeneratorController extends ChangeNotifier {
     _currentlyPlayingIndex = null;
     _currentUserInput.clear();
     _completedMelodies.clear();
-    _currentTargetMelodyIndex = 0;
     _validationState = ValidationState.neutral;
     _currentLevelIndex = 0;
     _activeIconsForCurrentLevel.clear();
+    _mostRecentFoundIndex = null;
     notifyListeners();
   }
-
-  // --- Lógica de Geração (Combinatória) ---
 
   List<List<String>> _generatePermutationsWithoutRepetition(List<String> items) {
     List<List<String>> result = [];
@@ -338,8 +289,6 @@ class MelodyGeneratorController extends ChangeNotifier {
     return result;
   }
 
-  // --- Funções Auxiliares ---
-  
   Future<void> _playIconSound(String type) async {
     String? soundPath;
     switch (type) {
