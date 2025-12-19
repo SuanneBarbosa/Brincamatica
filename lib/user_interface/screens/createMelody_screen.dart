@@ -6,17 +6,25 @@ import '../../services/icon_service.dart';
 import '../widgets/menu_button.dart';
 import '../../services/audio_service.dart';
 import 'package:flutter/services.dart';
-import 'instruction_screen.dart';
+import 'instruction_createMelody.dart';
 import 'tanks_screen.dart';
 import '../../services/saved_row_service.dart';
 import 'saved_rows_screen.dart';
 import '../widgets/joystick_button.dart';
 import '../../services/playback_service.dart';
-import 'about_screen.dart';
+import 'about_createMelody_screen.dart';
 
 
 class Mathicon extends StatefulWidget {
-  const Mathicon({super.key});
+  const Mathicon({super.key,
+    this.characterKey,
+    this.actionMenuKey,
+    this.playButtonKey,
+    this.menuButtonKey,});
+  final GlobalKey? characterKey;
+  final GlobalKey? actionMenuKey;
+  final GlobalKey? playButtonKey;
+  final GlobalKey? menuButtonKey;
 
   @override
   _MathiconState createState() => _MathiconState();
@@ -36,7 +44,6 @@ class _MathiconState extends State<Mathicon> {
   @override
   void dispose() {
     _drawerScrollController.dispose();
-    //context.read<PlaybackController>().stop();
     super.dispose();
   }
 
@@ -291,7 +298,6 @@ class _MathiconState extends State<Mathicon> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.speed, color: Colors.blue),
-                  // title: const Text("Velocidade da Animação"),
                   subtitle: Consumer<PlaybackController>(
                     builder: (context, controller, child) {
                       return Semantics(
@@ -302,7 +308,6 @@ class _MathiconState extends State<Mathicon> {
                             value: controller.speedMultiplier,
                             min: 0.5,
                             max: 2.5,
-                            //divisions: 8,
                             label:
                                 '${controller.speedMultiplier.toStringAsFixed(2)}x',
                             onChanged: (double value) {
@@ -439,6 +444,7 @@ class _MathiconState extends State<Mathicon> {
                       label: 'Abrir menu de navegação',
                       button: true,
                       child: IconButton(
+                         key: widget.menuButtonKey,
                         icon: const Icon(Icons.menu, color: Colors.blue),
                         tooltip: "Abrir menu",
                         onPressed: () => Scaffold.of(context).openDrawer(),
@@ -594,6 +600,7 @@ class _MathiconState extends State<Mathicon> {
                           top: controller.yPosition,
                           left: controller.xPosition,
                           child: GestureDetector(
+                            key: widget.characterKey,
                             onPanUpdate: (details) async {
                               if (context
                                       .read<PlaybackController>()
@@ -670,6 +677,7 @@ class _MathiconState extends State<Mathicon> {
                 : 'Tocar a linha atual do personagem',
             button: true,
             child: ElevatedButton(
+              key: widget.playButtonKey, 
               onPressed: onPressedAction,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blueAccent,
@@ -719,6 +727,7 @@ class _MathiconState extends State<Mathicon> {
       String buttonBasePath = 'assets/images/buttons/button_';
 
       return SingleChildScrollView(
+         key: widget.actionMenuKey,
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         child: Center(

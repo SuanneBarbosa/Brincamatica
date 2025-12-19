@@ -9,7 +9,6 @@ class OrientationScreen extends StatelessWidget {
     final tutorialService = OrientationService();
     await tutorialService.markOrientationAsShown();
     if (context.mounted) {
-      // MUDE A NAVEGAÇÃO PARA A HOMESCREEN
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) =>  const CharacterSelectionScreen(isInitialSelection: true)),
       );
@@ -18,7 +17,7 @@ class OrientationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ... seu código do build permanece exatamente o mesmo
+   
     const String titulo = 'Orientação do Dispositivo.';
     const String conteudo = 'Antes de utilizar o aplicativo, posicione o celular na sua mão, em modo paisagem, girando no sentido anti-horário.';
     const String instrucaoAcessibilidade = 'Clique no botão OK abaixo para fechar esta tela.';

@@ -6,14 +6,12 @@ class AppDrawerHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DrawerHeader(
-      // Removemos o padding padrão para ter mais controle com o Stack
       padding: EdgeInsets.zero,
       decoration: const BoxDecoration(
         color: Colors.blue,
       ),
       child: Stack(
         children: [
-          // Conteúdo principal centralizado
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -29,7 +27,7 @@ class AppDrawerHeader extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 1), // Aumentei um pouco o espaço
+                const SizedBox(height: 1),
                 Semantics(
                   label:
                       'Logotipos dos apoiadores: IFSP, CNPQ e RUMO à Educação Matemática Inclusiva',
@@ -48,7 +46,6 @@ class AppDrawerHeader extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
-                      // Usamos Flexible para os logos se ajustarem melhor
                       children: [
                         Flexible(
                           child: Image.asset('assets/images/IFSP_Logo.png',
@@ -71,7 +68,6 @@ class AppDrawerHeader extends StatelessWidget {
               ],
             ),
           ),
-          // Botão de fechar posicionado no canto superior direito
           Positioned(
             top: 0,
             right: 0,

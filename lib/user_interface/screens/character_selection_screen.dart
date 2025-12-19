@@ -46,18 +46,15 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
 
     const double itemSpacing = 12.0;
     const double maxRowWidth = 600.0;
-
-    // ====================== MUDANÇA AQUI: Título Dinâmico ======================
     final String appBarTitle = widget.isInitialSelection
         ? 'Personagem'
         : 'Escolha Seu Personagem';
-    // ===========================================================================
 
     return Scaffold(
       appBar: AppBar(
         title: Semantics(
           header: false,
-          child: Text(appBarTitle), // Usamos a variável com o título dinâmico
+          child: Text(appBarTitle), 
         ),
         automaticallyImplyLeading: !widget.isInitialSelection,
         backgroundColor: Colors.blue,

@@ -1,22 +1,24 @@
-import 'package:Mathnew/services/memory_tutorial_service.dart';
-import 'package:Mathnew/user_interface/screens/about_memory_game_screen.dart';
-import 'package:Mathnew/user_interface/screens/instruction_memory_game_screen.dart';
+import 'package:Mathnew/services/sheldon_tutorial_service.dart';
+import 'package:Mathnew/user_interface/screens/about_sheldon_screen.dart';
+import 'package:Mathnew/user_interface/screens/instruction_sheldon_screen.dart';
 import 'package:Mathnew/user_interface/widgets/app_drawer_header.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/character_service.dart';
-import '../../services/memory_game_service.dart';
-import 'score_history_screen.dart';
+import '../../services/sheldon_service.dart';
+import 'sheldon_score_history_screen.dart';
 import 'tanks_screen.dart';
 
 class MemoryGameScreen extends StatefulWidget {
   final GlobalKey? statusBarKey;
+  final GlobalKey? gridKey;
   final Map<String, GlobalKey>? cardKeys;
   final Function(String)? onCardTappedDuringTutorial;
 
   const MemoryGameScreen({
     super.key,
     this.statusBarKey,
+    this.gridKey,
     this.cardKeys,
     this.onCardTappedDuringTutorial,
   });
@@ -102,7 +104,6 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
     final bool isExploringCardsTutorial =
         tutorialController?.isTutorialActive == true &&
             tutorialController?.activeCardTutorialType != null;
- 
 
     return PopScope(
       canPop: true,
@@ -116,7 +117,7 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-             const AppDrawerHeader(),
+              const AppDrawerHeader(),
               ListTile(
                 leading: const Icon(Icons.home_filled, color: Colors.blue),
                 title: const Text('Escolha o Jogo'),
@@ -135,6 +136,85 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
                       MaterialPageRoute(
                           builder: (_) => const ScoreHistoryScreen()));
                 },
+              ),
+              ExpansionTile(
+                leading: const Icon(Icons.timer, color: Colors.blue),
+                title: Semantics(
+                  label: "Configurar Tempo",
+                  hint: "abrir as opções de tempo",
+                  child: const ExcludeSemantics(
+                    child: Text("Configurar Tempo"),
+                  ),
+                ),
+                children: [
+                  Consumer<GeniusGameController>(
+                    builder: (context, controller, child) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0, vertical: 8.0),
+                            child: ExcludeSemantics(
+                              child: Text(
+                                "Tempo Inicial (1ª jogada): ${controller.settingFirstMoveSeconds}s",
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          Semantics(
+                            label:
+                                "Tempo inicial da primeira jogada ${controller.settingFirstMoveSeconds} segundos, arraste o slider para mudar o valor",
+                            slider: true,
+                            child: ExcludeSemantics(
+                              child: Slider(
+                                value: controller.settingFirstMoveSeconds
+                                    .toDouble(),
+                                min: 5,
+                                max: 30,
+                                divisions: 25,
+                                label: "${controller.settingFirstMoveSeconds}s",
+                                onChanged: (value) =>
+                                    controller.setFirstMoveSeconds(value),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0, vertical: 8.0),
+                            child: ExcludeSemantics(
+                              child: Text(
+                                "Tempo Padrão (demais jogadas): ${controller.settingSubsequentMoveSeconds}s",
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          Semantics(
+                            label:
+                                "Tempo padrão das demais jogadas ${controller.settingSubsequentMoveSeconds} segundos, arraste o slider para mudar o valor",
+                            slider: true,
+                            child: ExcludeSemantics(
+                              child: Slider(
+                                value: controller.settingSubsequentMoveSeconds
+                                    .toDouble(),
+                                min: 3,
+                                max: 20,
+                                divisions: 17,
+                                label:
+                                    "${controller.settingSubsequentMoveSeconds}s",
+                                onChanged: (value) =>
+                                    controller.setSubsequentMoveSeconds(value),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                      );
+                    },
+                  ),
+                ],
               ),
               const Divider(),
               ListTile(
@@ -226,10 +306,9 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
                   child: _buildInGameStatus(geniusController),
                 ),
               ),
-
               const SizedBox(height: 10),
-
               Expanded(
+                //key: widget.gridKey,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     const double crossAxisSpacing = 15;
@@ -367,7 +446,7 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
     );
   }
 
-   Widget _buildInGameStatus(GeniusGameController controller) {
+  Widget _buildInGameStatus(GeniusGameController controller) {
     final screenWidth = MediaQuery.of(context).size.width;
     final textStyleSize = (screenWidth * 0.035).clamp(18.0, 24.0);
     final buttonTextStyleSize = (screenWidth * 0.03).clamp(16.0, 22.0);
@@ -380,17 +459,23 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
     switch (controller.gameState) {
       case GeniusGameState.showingSequence:
         leftSide = Text(
-    'Ouça a sequência...',
-    semanticsLabel: 'Ouça a sequência.',
-    style: TextStyle(fontSize: textStyleSize, fontWeight: FontWeight.w500, color: Colors.blue[900]),
-  );
+          'Ouça a sequência...',
+          semanticsLabel: 'Ouça a sequência.',
+          style: TextStyle(
+              fontSize: textStyleSize,
+              fontWeight: FontWeight.w500,
+              color: Colors.blue[900]),
+        );
         isLive = false;
         break;
-        
+
       case GeniusGameState.playerTurn:
         leftSide = Text(
           'Sua vez!',
-          style: TextStyle(fontSize: textStyleSize, fontWeight: FontWeight.w500, color: Colors.blue[900]),
+          style: TextStyle(
+              fontSize: textStyleSize,
+              fontWeight: FontWeight.w500,
+              color: Colors.blue[900]),
         );
         isLive = true;
         break;
@@ -399,23 +484,38 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
         leftSide = Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.timer_outlined, color: Colors.blue.shade800, size: textStyleSize * 1.2),
+            Icon(Icons.timer_outlined,
+                color: Colors.blue.shade800, size: textStyleSize * 1.2),
             const SizedBox(width: 8),
-            Text('${controller.countdown}', style: TextStyle(fontSize: textStyleSize * 1.1, fontWeight: FontWeight.bold)),
+            Text('${controller.countdown}',
+                style: TextStyle(
+                    fontSize: textStyleSize * 1.1,
+                    fontWeight: FontWeight.bold)),
           ],
         );
         isLive = true;
         break;
       case GeniusGameState.levelComplete:
-        leftSide = Text('Muito bem!', style: TextStyle(fontSize: textStyleSize, fontWeight: FontWeight.w500, color: Colors.blue[900]));
+        leftSide = Text('Muito bem!',
+            style: TextStyle(
+                fontSize: textStyleSize,
+                fontWeight: FontWeight.w500,
+                color: Colors.blue[900]));
         isLive = true;
         break;
       case GeniusGameState.notStarted:
-        leftSide = Text('Pronto para começar?', style: TextStyle(fontSize: textStyleSize, fontWeight: FontWeight.w500, color: Colors.blue[900]));
+        leftSide = Text('Pronto para começar?',
+            style: TextStyle(
+                fontSize: textStyleSize,
+                fontWeight: FontWeight.w500,
+                color: Colors.blue[900]));
         rightSide = ElevatedButton(
           style: ElevatedButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(16.0, 32.0), vertical: 8),
-            textStyle: TextStyle(fontSize: buttonTextStyleSize, fontWeight: FontWeight.bold),
+            padding: EdgeInsets.symmetric(
+                horizontal: (screenWidth * 0.04).clamp(16.0, 32.0),
+                vertical: 8),
+            textStyle: TextStyle(
+                fontSize: buttonTextStyleSize, fontWeight: FontWeight.bold),
           ),
           onPressed: () => controller.startGame(context),
           child: const Text('Iniciar'),
@@ -428,11 +528,18 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
         );
         break;
       case GeniusGameState.gameOver:
-        leftSide = Text('Fim de Jogo! Pontuação: ${controller.score}', style: TextStyle(fontSize: textStyleSize, fontWeight: FontWeight.w500, color: Colors.blue[900]));
+        leftSide = Text('Fim de Jogo! Pontuação: ${controller.score}',
+            style: TextStyle(
+                fontSize: textStyleSize,
+                fontWeight: FontWeight.w500,
+                color: Colors.blue[900]));
         rightSide = ElevatedButton(
           style: ElevatedButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(16.0, 32.0), vertical: 8),
-            textStyle: TextStyle(fontSize: buttonTextStyleSize, fontWeight: FontWeight.bold),
+            padding: EdgeInsets.symmetric(
+                horizontal: (screenWidth * 0.04).clamp(16.0, 32.0),
+                vertical: 8),
+            textStyle: TextStyle(
+                fontSize: buttonTextStyleSize, fontWeight: FontWeight.bold),
           ),
           onPressed: () => controller.startGame(context),
           child: const Text('Jogar Novamente'),
@@ -454,9 +561,8 @@ class _GeniusGameScreenState extends State<MemoryGameScreen> {
           height: 60,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.blue.shade100.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(10)
-          ),
+              color: Colors.blue.shade100.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10)),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

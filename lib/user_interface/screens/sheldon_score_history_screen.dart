@@ -33,7 +33,6 @@ class ScoreHistoryScreen extends StatelessWidget {
               itemCount: historyService.scores.length,
               itemBuilder: (context, index) {
                 final entry = historyService.scores[index];
-                // Formata a data e hora para exibição
                 final formattedDate = DateFormat('dd/MM/yyyy – HH:mm').format(entry.date);
 
                 return Card(

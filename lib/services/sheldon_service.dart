@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart'; // <-- ADICIONE ESTE IMPORT
+import 'package:flutter/semantics.dart'; 
 import 'package:provider/provider.dart';
 import 'audio_service.dart';
 import 'score_history_service.dart';
@@ -37,10 +37,29 @@ class GeniusGameController extends ChangeNotifier {
   String? _currentlyPlayingIcon;
   int _countdown = 10;
 
+  
+  int _settingFirstMoveSeconds = 15; 
+  int _settingSubsequentMoveSeconds = 10; 
+
   GeniusGameState get gameState => _gameState;
   int get score => _score;
   String? get currentlyPlayingIcon => _currentlyPlayingIcon;
   int get countdown => _countdown;
+  
+ 
+  int get settingFirstMoveSeconds => _settingFirstMoveSeconds;
+  int get settingSubsequentMoveSeconds => _settingSubsequentMoveSeconds;
+
+  
+  void setFirstMoveSeconds(double value) {
+    _settingFirstMoveSeconds = value.toInt();
+    notifyListeners();
+  }
+
+  void setSubsequentMoveSeconds(double value) {
+    _settingSubsequentMoveSeconds = value.toInt();
+    notifyListeners();
+  }
 
   void startGame(BuildContext context) {
     _score = 0;
@@ -86,22 +105,17 @@ class GeniusGameController extends ChangeNotifier {
       await Future.delayed(gapDuration);
     }
 
-     // ====================== MUDANÇA AQUI ======================
-    // 1. Mude para o estado intermediário "playerTurn"
+    
     _gameState = GeniusGameState.playerTurn;
     notifyListeners();
 
-    // 2. Aguarde um momento para que o jogador veja a mensagem "Sua vez!"
-    //    Você pode ajustar a duração (ex: 1200 para 1.2 segundos).
     await Future.delayed(const Duration(milliseconds: 1500));
-
-    // 3. Verifique se o jogo não foi interrompido durante a pausa
     if (_gameState != GeniusGameState.playerTurn) return;
-
-    // 4. Agora, mude para o estado de espera e inicie o timer.
     _gameState = GeniusGameState.waitingForInput;
     notifyListeners();
-    _startInputTimer(context: context, seconds: 10);
+    
+    
+    _startInputTimer(context: context, seconds: _settingFirstMoveSeconds);
   }
 
   void handlePlayerInput(String iconType, BuildContext context) {
@@ -118,7 +132,8 @@ class GeniusGameController extends ChangeNotifier {
         notifyListeners();
         Future.delayed(const Duration(milliseconds: 1500), () => _nextLevel(context));
       } else {
-         _startInputTimer(context: context, seconds: 3);
+       
+         _startInputTimer(context: context, seconds: _settingSubsequentMoveSeconds);
       }
     } else {
       _gameOver(context);
@@ -133,17 +148,11 @@ class GeniusGameController extends ChangeNotifier {
 
     _audioService.playAudio('assets/sounds/error.mp3');
 
-    // ====================== MUDANÇA AQUI ======================
-    // Criamos a mensagem que será anunciada pelo leitor de tela.
     final String announcement = "Fim de Jogo! Você alcançou o nível ${_score + 1} e sua pontuação foi ${_score}. Toque no botão Jogar Novamente para iniciar um novo jogo.";
-    
-    // Usamos um pequeno atraso para garantir que o som de erro não
-    // interrompa o anúncio do TalkBack.
+  
     Future.delayed(const Duration(milliseconds: 200), () {
       SemanticsService.announce(announcement, TextDirection.ltr);
     });
-    // ==========================================================
-
     notifyListeners();
   }
 

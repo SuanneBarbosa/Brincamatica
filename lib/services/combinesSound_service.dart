@@ -1,6 +1,6 @@
-// lib/services/melody_generator_service.dart
 import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/semantics.dart';
 import 'audio_service.dart';
 
 class GameLevel {
@@ -56,10 +56,8 @@ class MelodyGeneratorController extends ChangeNotifier {
   ValidationState _validationState = ValidationState.neutral;
   int _currentLevelIndex = 0;
   List<String> _activeIconsForCurrentLevel = [];
-  
-  // <<< NOVO: Para rastrear o último item encontrado >>>
   int? _mostRecentFoundIndex;
-
+  bool _isFreePlayWithRepetition = false;
   GeneratorState get state => _state;
   Set<String> get selectedIcons => _selectedIcons;
   List<List<String>> get generatedMelodies => _generatedMelodies;
@@ -72,9 +70,8 @@ class MelodyGeneratorController extends ChangeNotifier {
   GameLevel get currentLevel => _levels[_currentLevelIndex];
   int get totalLevels => _levels.length;
   List<String> get activeIconsForLevel => _activeIconsForCurrentLevel;
-  
-  // <<< NOVO GETTER >>>
   int? get mostRecentFoundIndex => _mostRecentFoundIndex;
+  bool get isFreePlayWithRepetition => _isFreePlayWithRepetition;
 
   final List<String> availableIcons = [
     "BaterPalma", "BaterPe", "BaterPeito", "BaterPerna",
@@ -103,6 +100,7 @@ class MelodyGeneratorController extends ChangeNotifier {
   void startFreePlayMode(bool withRepetition) {
     final items = _selectedIcons.toList();
     _activeIconsForCurrentLevel = items;
+    _isFreePlayWithRepetition = withRepetition;
     _generatedMelodies = withRepetition
         ? _generatePermutationsWithRepetition(items, items.length)
         : _generatePermutationsWithoutRepetition(items);
@@ -119,20 +117,23 @@ class MelodyGeneratorController extends ChangeNotifier {
     _currentLevelIndex = 0;
     _setupCurrentLevel();
     _state = GeneratorState.playingLevels;
+    Future.delayed(const Duration(milliseconds: 200), () {
+      SemanticsService.announce("Iniciando desafio por níveis. Nível 1.", TextDirection.ltr);
+    });
     notifyListeners();
   }
 
-  void handleIconTap(String iconType) {
-    if (_validationState == ValidationState.incorrect || _state == GeneratorState.gameWon || _state == GeneratorState.levelComplete) return;
+  Future<void> handleIconTap(String iconType) async { 
+  if (_validationState == ValidationState.incorrect || _state == GeneratorState.gameWon || _state == GeneratorState.levelComplete) return;
 
-    final int targetLength = _generatedMelodies.isNotEmpty ? _generatedMelodies.first.length : 0;
-    if (_currentUserInput.length < targetLength) {
-      _currentUserInput.add(iconType);
-      _playIconSound(iconType);
-      _validateInput();
-      notifyListeners();
-    }
+  final int targetLength = _generatedMelodies.isNotEmpty ? _generatedMelodies.first.length : 0;
+  if (_currentUserInput.length < targetLength) {
+    _currentUserInput.add(iconType);
+    await _playIconSound(iconType);
+    await _validateInput();         
+    notifyListeners();
   }
+}
 
   void clearUserInput() {
     _currentUserInput.clear();
@@ -140,45 +141,53 @@ class MelodyGeneratorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _validateInput() {
-    if (_generatedMelodies.isEmpty) return;
-    final int targetLength = _generatedMelodies.first.length;
-    if (_currentUserInput.length != targetLength) return;
 
-    int? matchedIndex;
-    for (int i = 0; i < _generatedMelodies.length; i++) {
-      if (!_completedMelodies[i] && const ListEquality().equals(_generatedMelodies[i], _currentUserInput)) {
-        matchedIndex = i;
-        break;
-      }
-    }
+  Future<void> _validateInput() async { 
+  if (_generatedMelodies.isEmpty) return;
+  final int targetLength = _generatedMelodies.first.length;
+  if (_currentUserInput.length != targetLength) return;
 
-    if (matchedIndex != null) {
-      _validationState = ValidationState.correct;
-      _audioService.playFeedbackAudio('assets/sounds/correto.mp3');
-      _completedMelodies[matchedIndex] = true;
-      // <<< ALTERAÇÃO: Armazena o índice do item recém-encontrado >>>
-      _mostRecentFoundIndex = matchedIndex;
-      notifyListeners();
-
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
-        _currentUserInput.clear();
-        _validationState = ValidationState.neutral;
-        notifyListeners();
-      });
-    } else {
-      _validationState = ValidationState.incorrect;
-      _audioService.playFeedbackAudio('assets/sounds/errado.mp3');
-      notifyListeners();
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
-        _currentUserInput.clear();
-        _validationState = ValidationState.neutral;
-        notifyListeners();
-      });
+  int? matchedIndex;
+  for (int i = 0; i < _generatedMelodies.length; i++) {
+    if (!_completedMelodies[i] && const ListEquality().equals(_generatedMelodies[i], _currentUserInput)) {
+      matchedIndex = i;
+      break;
     }
   }
+
+  await Future.delayed(const Duration(milliseconds: 300));
+
+  if (matchedIndex != null) {
+    _validationState = ValidationState.correct;
+    _audioService.playFeedbackAudio('assets/sounds/correto.mp3'); 
+    _completedMelodies[matchedIndex] = true;
+    _mostRecentFoundIndex = matchedIndex;
+    Future.delayed(const Duration(milliseconds: 200), () {
+      SemanticsService.announce("Correto!", TextDirection.ltr);
+    });
+    notifyListeners();
+
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
+      _currentUserInput.clear();
+      _validationState = ValidationState.neutral;
+      notifyListeners();
+    });
+  } else {
+    _validationState = ValidationState.incorrect;
+    _audioService.playFeedbackAudio('assets/sounds/errado.mp3');
+    Future.delayed(const Duration(milliseconds: 200), () {
+      SemanticsService.announce("Incorreto! Tente novamente.", TextDirection.ltr);
+    });
+    notifyListeners();
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (_state != GeneratorState.playingFreePlay && _state != GeneratorState.playingLevels) return;
+      _currentUserInput.clear();
+      _validationState = ValidationState.neutral;
+      notifyListeners();
+    });
+  }
+}
 
   void finalizeRound() {
       if (areAllCombinationsFound()) {
@@ -186,6 +195,9 @@ class MelodyGeneratorController extends ChangeNotifier {
             _advanceToNextLevel();
           } else {
             _state = GeneratorState.gameWon;
+             Future.delayed(const Duration(milliseconds: 200), () {
+              SemanticsService.announce("Parabéns! Você encontrou todas as combinações.", TextDirection.ltr);
+            });
           }
           notifyListeners();
       }
@@ -213,8 +225,14 @@ class MelodyGeneratorController extends ChangeNotifier {
   void _advanceToNextLevel() {
     if (_currentLevelIndex < _levels.length - 1) {
       _state = GeneratorState.levelComplete;
+      Future.delayed(const Duration(milliseconds: 200), () {
+        SemanticsService.announce("Nível ${_currentLevelIndex + 1} completo! Toque no botão para avançar.", TextDirection.ltr);
+      });
     } else {
       _state = GeneratorState.gameWon;
+       Future.delayed(const Duration(milliseconds: 200), () {
+        SemanticsService.announce("Desafio completo! Parabéns, você venceu o jogo!", TextDirection.ltr);
+      });
     }
   }
 
@@ -222,6 +240,9 @@ class MelodyGeneratorController extends ChangeNotifier {
     _currentLevelIndex++;
     _setupCurrentLevel();
     _state = GeneratorState.playingLevels;
+    Future.delayed(const Duration(milliseconds: 200), () {
+      SemanticsService.announce("Iniciando nível ${_currentLevelIndex + 1}.", TextDirection.ltr);
+    });
     notifyListeners();
   }
 
@@ -248,6 +269,11 @@ class MelodyGeneratorController extends ChangeNotifier {
     _currentLevelIndex = 0;
     _activeIconsForCurrentLevel.clear();
     _mostRecentFoundIndex = null;
+    _isFreePlayWithRepetition = false;
+
+    Future.delayed(const Duration(milliseconds: 200), () {
+      SemanticsService.announce("Jogo reiniciado.", TextDirection.ltr);
+    });
     notifyListeners();
   }
 
@@ -304,7 +330,7 @@ class MelodyGeneratorController extends ChangeNotifier {
       case "Beijo": soundPath = 'assets/sounds/beijo.mp3'; break;
     }
     if (soundPath != null) {
-      await _audioService.playAudio(soundPath);
+      await _audioService.playFeedbackAudio(soundPath);
     }
   }
 

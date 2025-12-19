@@ -52,6 +52,13 @@ class MemoryGameInstructionsScreen extends StatelessWidget {
                   'O cronômetro fica no painel superior durante sua vez, com 10 segundos para o primeiro toque e 3 para os demais.',
             ),
             _buildInstructionItem(
+              title: 'Configurar Tempo',
+              description:
+                  'Você pode ajustar a dificuldade alterando o tempo limite. Abra o Menu Lateral e use os controles deslizantes em "Configurar Tempo" para definir quantos segundos você quer para a primeira jogada e para as seguintes.',
+              semanticsDescription:
+                  'No menu lateral, você pode aumentar ou diminuir o tempo que tem para responder.',
+            ),
+            _buildInstructionItem(
               title: 'Pontuação e níveis',
               description:
                   'Cada sequência completada aumenta sua pontuação e avança para o próximo nível. A dificuldade cresce gradualmente.',

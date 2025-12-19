@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 
-class MemoryGameAboutScreen extends StatelessWidget {
-  const MemoryGameAboutScreen({super.key});
+class AboutGeneratorScreen extends StatelessWidget {
+  const AboutGeneratorScreen({super.key});
+  static const String _appVersion = 'Versão 1.0';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromRGBO(220, 247, 255, 1.0),
       appBar: AppBar(
         title: const Text("Sobre"),
         backgroundColor: Colors.blue,
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Container(
-        color: const Color.fromRGBO(220, 247, 255, 1.0),
+      body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
@@ -37,7 +38,7 @@ class MemoryGameAboutScreen extends StatelessWidget {
           children: [
             const Center(
               child: Text(
-                'Jogo da Memória',
+                'Combina Som',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 26,
@@ -48,7 +49,7 @@ class MemoryGameAboutScreen extends StatelessWidget {
             ),
             const Center(
               child: Text(
-                'Versão 1.0',
+                _appVersion, 
                 style: TextStyle(
                   fontSize: 16,
                   fontStyle: FontStyle.italic,
@@ -59,26 +60,21 @@ class MemoryGameAboutScreen extends StatelessWidget {
             const Divider(height: 30),
             _buildSectionTitle('O que é?'),
             const Text(
-              'Um jogo de memória auditiva e visual: ouça a sequência de sons/ícones e repita na mesma ordem. '
-              'A cada nível a sequência cresce e o desafio aumenta.',
+              'Combina Som é um jogo que explore o mundo dos sons, descubra padrões e treine sua memória de uma forma divertida e interativa!',
               style: TextStyle(fontSize: 16, height: 1.4),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             _buildSectionTitle('Principais Funcionalidades'),
-            _buildFeatureItem(Icons.visibility_outlined, 'Ouça a sequência:',
-                'os cartões são destacados um a um e seus sons são reproduzidos automaticamente para você memorizar a ordem.'),
-            _buildFeatureItem(Icons.touch_app_outlined, 'Repita na sua vez:',
-                'quando a exibição termina, toque nos cartões na mesma ordem apresentada. Um cronômetro no topo indica o tempo restante.'),
+            _buildFeatureItem(Icons.music_note_outlined, 'Comece a Combinar:',
+                'Selecione 2 ou 3 sons para dar início ao desafio e descobrir todas as combinações que eles podem formar.'),
+            _buildFeatureItem(
+                Icons.touch_app_outlined,
+                'Jogabilidade Intuitiva:',
+                'Ao formar uma sequência, o jogo informa imediatamente se sua combinação está correta, permitindo que você aprenda e avance para o próximo nível.'),
             _buildFeatureItem(
                 Icons.trending_up_outlined,
-                'Progressão de níveis:',
-                'a cada acerto a sequência ganha um novo som, aumentando gradualmente a dificuldade e sua pontuação.'),
-            _buildFeatureItem(
-                Icons.volume_up_outlined,
-                'Feedback sonoro e visual:',
-                'cada cartão possui um som próprio (palmas, assobio, batidas, etc.) e realce visual durante a exibição e a sua jogada.'),
-            _buildFeatureItem(Icons.accessibility_new, 'Acessibilidade:',
-                'indicadores de estado são anunciados por leitor de tela (ex.: “Ouça a sequência”, “Sua vez”) e os cartões têm rótulos semânticos claros.'),
+                'Níveis Progressivos:',
+                'Comece com combinações simples e avance para desafios complexos, incluindo fases sem dicas que testarão sua memória auditiva.'),
           ],
         ),
       ),
@@ -102,12 +98,18 @@ class MemoryGameAboutScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Image.asset('assets/images/IFSP_Logo.png',
-                      height: 60, fit: BoxFit.contain),
-                  Image.asset('assets/images/CNPQ_Logo.png',
-                      height: 60, fit: BoxFit.contain),
-                  Image.asset('assets/images/RUMO_Logo.png',
-                      height: 60, fit: BoxFit.contain),
+                  Flexible(
+                    child: Image.asset('assets/images/IFSP_Logo.png',
+                        height: 60, fit: BoxFit.contain),
+                  ),
+                  Flexible(
+                    child: Image.asset('assets/images/CNPQ_Logo.png',
+                        height: 60, fit: BoxFit.contain),
+                  ),
+                  Flexible(
+                    child: Image.asset('assets/images/RUMO_Logo.png',
+                        height: 60, fit: BoxFit.contain),
+                  ),
                 ],
               ),
             ),
@@ -133,17 +135,17 @@ class MemoryGameAboutScreen extends StatelessWidget {
 
   Widget _buildFeatureItem(IconData icon, String title, String description) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10.0),
+      padding: const EdgeInsets.only(bottom: 12.0), 
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.blue, size: 22),
+          Icon(icon, color: Colors.blue, size: 24), 
           const SizedBox(width: 12),
           Expanded(
             child: RichText(
               text: TextSpan(
                 style: const TextStyle(
-                    fontSize: 15, color: Colors.black87, height: 1.3),
+                    fontSize: 16, color: Colors.black87, height: 1.4), 
                 children: [
                   TextSpan(
                       text: '$title ',

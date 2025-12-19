@@ -1,9 +1,8 @@
-// lib/user_interface/screens/about_generator_screen.dart
 
 import 'package:flutter/material.dart';
 
-class AboutGeneratorScreen extends StatelessWidget {
-  const AboutGeneratorScreen({super.key});
+class AboutScreen extends StatelessWidget {
+  const AboutScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +20,7 @@ class AboutGeneratorScreen extends StatelessWidget {
           children: [
             _buildInfoCard(context),
             const SizedBox(height: 20),
+            
             _buildSupportCard(),
           ],
         ),
@@ -39,10 +39,9 @@ class AboutGeneratorScreen extends StatelessWidget {
           children: [
             const Center(
               child: Text(
-                'Gerador de Sons e Imagens',
-                textAlign: TextAlign.center,
+                'Criar Melodia',
                 style: TextStyle(
-                  fontSize: 26,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: Colors.blueAccent,
                 ),
@@ -50,7 +49,7 @@ class AboutGeneratorScreen extends StatelessWidget {
             ),
             const Center(
               child: Text(
-                'Versão 1.0',
+                'Versão 1.3',
                 style: TextStyle(
                   fontSize: 16,
                   fontStyle: FontStyle.italic,
@@ -59,30 +58,24 @@ class AboutGeneratorScreen extends StatelessWidget {
               ),
             ),
             const Divider(height: 30),
-            _buildSectionTitle('O que é?'),
+            _buildSectionTitle('O que é o App?'),
             const Text(
-              'Um jogo interativo para explorar combinações de sons! Selecione seus sons favoritos e o jogo gerará todas as melodias possíveis para você ouvir e tentar replicar.',
+              'Criar Melodia é uma ferramenta educacional que transforma a composição musical em uma atividade visual e interativa.',
               style: TextStyle(fontSize: 16, height: 1.4),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             _buildSectionTitle('Principais Funcionalidades'),
-            _buildFeatureItem(Icons.music_note_outlined, 'Selecione os Sons:',
-                'Escolha 2 ou 3 sons da nossa biblioteca para começar a brincadeira.'),
-            _buildFeatureItem(Icons.shuffle, 'Geração Automática:',
-                'O aplicativo cria todas as combinações de melodias possíveis com os sons que você escolheu.'),
-            _buildFeatureItem(
-                Icons.touch_app_outlined,
-                'Desafio Interativo:',
-                'Tente recriar as melodias tocando nos sons na ordem correta. O jogo dá feedback instantâneo se você acertou ou errou.'),
-            _buildFeatureItem(
-                Icons.trending_up_outlined,
-                'Modo Desafio:',
-                'Enfrente níveis de dificuldade crescente, começando com melodias simples e avançando para sequências mais complexas e sem dicas visuais.'),
+            _buildFeatureItem(Icons.grid_on, 'Criação Visual:', 'Arraste o beija-flor pela grade e adicione ícones de ação (palmas, assobios, batidas) para construir sua sequência rítmica.'),
+            _buildFeatureItem(Icons.play_circle_outline, 'Reprodução Instantânea:', 'Toque "Play" para ver o beija-flor percorrer sua criação, tocando cada som em ordem.'),
+            _buildFeatureItem(Icons.save, 'Salve e Reutilize:', 'Guarde suas sequências favoritas e aplique-as em diferentes linhas para criar composições mais complexas.'),
+            _buildFeatureItem(Icons.accessibility_new, 'Personalização e Acessibilidade:', 'Escolha seu personagem, ajuste o tamanho dos ícones e utilize o joystick para uma navegação facilitada.'),
           ],
         ),
       ),
     );
   }
+
+  
 
   Widget _buildSupportCard() {
     return Card(
@@ -95,18 +88,14 @@ class AboutGeneratorScreen extends StatelessWidget {
             _buildSectionTitle('Apoio Institucional'),
             const SizedBox(height: 15),
             Semantics(
-              label:
-                  'Logotipos dos apoiadores: IFSP, CNPQ e RUMO à Educação Matemática Inclusiva',
+              label: 'Logotipos dos apoiadores: IFSP, CNPQ e RUMO à Educação Matemática Inclusiva',
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Image.asset('assets/images/IFSP_Logo.png',
-                      height: 60, fit: BoxFit.contain),
-                  Image.asset('assets/images/CNPQ_Logo.png',
-                      height: 60, fit: BoxFit.contain),
-                  Image.asset('assets/images/RUMO_Logo.png',
-                      height: 60, fit: BoxFit.contain),
+                  Image.asset('assets/images/IFSP_Logo.png', height: 60, fit: BoxFit.contain),
+                  Image.asset('assets/images/CNPQ_Logo.png', height: 60, fit: BoxFit.contain),
+                  Image.asset('assets/images/RUMO_Logo.png', height: 60, fit: BoxFit.contain),
                 ],
               ),
             ),
@@ -141,13 +130,10 @@ class AboutGeneratorScreen extends StatelessWidget {
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: const TextStyle(
-                    fontSize: 15, color: Colors.black87, height: 1.3),
+                style: const TextStyle(fontSize: 15, color: Colors.black87, height: 1.3),
                 children: [
-                  TextSpan(
-                      text: '$title ',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  TextSpan(text: description),
+                  TextSpan(text: title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: ' $description'),
                 ],
               ),
             ),
