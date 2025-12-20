@@ -1,3 +1,4 @@
+import 'package:Mathnew/user_interface/widgets/vlibras_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'combinesSound_service.dart';
@@ -250,6 +251,7 @@ class GeneratorTutorialController extends ChangeNotifier {
     bool isWelcomeStep = _currentStepIndex == 0;
     bool isNextStepInstruction = _currentStepIndex == 1;
     String messageToSpeak = message;
+    VLibrasWidget.buscarTraducao(message); 
 
     if (isTutorialActive && !isLastStep && !isWelcomeStep && !isNextStepInstruction) {
       messageToSpeak += ". Toque em próximo para continuar";

@@ -22,6 +22,7 @@ import 'user_interface/screens/character_selection_screen.dart';
 import 'services/sound_memory_service.dart';
 
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   bool isMobilePlatform() {

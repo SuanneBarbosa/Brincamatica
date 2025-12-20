@@ -1,3 +1,4 @@
+import 'package:Mathnew/user_interface/widgets/vlibras_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/sheldon_service.dart';
@@ -45,6 +46,12 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
           child: gameScreen,
         ),
         _buildTutorialLayer(tutorial),
+        if (tutorial.isTutorialActive)
+        const Positioned(
+          bottom: 50, 
+          right: 0,
+          child: VLibrasWidget(),
+        ),
       ],
     );
   }

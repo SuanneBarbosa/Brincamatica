@@ -1,3 +1,4 @@
+import 'package:Mathnew/user_interface/widgets/vlibras_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'orientation_service.dart';
@@ -158,6 +159,7 @@ class SoundMemoryTutorialController extends ChangeNotifier {
     bool isWelcomeStep = _currentStepIndex == 0;
     bool isNextStepInstruction = _currentStepIndex == 1;
     String messageToSpeak = message;
+    VLibrasWidget.buscarTraducao(message); 
 
   
     if (isTutorialActive && !isLastStep && !isWelcomeStep && !isNextStepInstruction) {

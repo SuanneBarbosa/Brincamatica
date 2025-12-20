@@ -1,3 +1,4 @@
+import 'package:Mathnew/user_interface/widgets/vlibras_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/sound_memory_service.dart';
@@ -39,6 +40,12 @@ class _SoundMemoryTutorialOverlayState extends State<SoundMemoryTutorialOverlay>
           ),
         ),
         if (tutorial.isTutorialActive) _buildTutorialLayer(tutorial),
+        if (tutorial.isTutorialActive)
+        const Positioned(
+          bottom: 50,
+          right: 0,
+          child: VLibrasWidget(),
+        ),
       ],
     );
   }
