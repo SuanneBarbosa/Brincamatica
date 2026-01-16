@@ -251,6 +251,7 @@ class GeneratorTutorialController extends ChangeNotifier {
     bool isWelcomeStep = _currentStepIndex == 0;
     bool isNextStepInstruction = _currentStepIndex == 1;
     String messageToSpeak = message;
+     
     VLibrasWidget.buscarTraducao(message); 
 
     if (isTutorialActive && !isLastStep && !isWelcomeStep && !isNextStepInstruction) {

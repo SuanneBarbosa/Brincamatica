@@ -42,9 +42,11 @@ class _SoundMemoryTutorialOverlayState extends State<SoundMemoryTutorialOverlay>
         if (tutorial.isTutorialActive) _buildTutorialLayer(tutorial),
         if (tutorial.isTutorialActive)
         const Positioned(
-          bottom: 50,
+          bottom: 0,
           right: 0,
+           child: ExcludeSemantics(
           child: VLibrasWidget(),
+           ),
         ),
       ],
     );
@@ -81,13 +83,18 @@ class _SoundMemoryTutorialOverlayState extends State<SoundMemoryTutorialOverlay>
     );
   }
   
-  Widget _buildGuidanceBox(SoundMemoryTutorialController tutorial) {
-    if (tutorial.guidanceText.isEmpty) return const SizedBox.shrink();
 
-    return Center(
+ Widget _buildGuidanceBox(SoundMemoryTutorialController tutorial) {
+    if (tutorial.guidanceText.isEmpty) return const SizedBox.shrink();
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double fontSize = (screenWidth * 0.025).clamp(16.0, 32.0);
+
+    return Align(
+      alignment: Alignment.centerLeft,
       child: Container(
+        width: screenWidth * 0.70, 
         padding: const EdgeInsets.all(24),
-        margin: const EdgeInsets.symmetric(horizontal: 40),
+        margin: const EdgeInsets.only(left: 30), 
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
@@ -102,8 +109,8 @@ class _SoundMemoryTutorialOverlayState extends State<SoundMemoryTutorialOverlay>
           liveRegion: true,
           child: Text(
             tutorial.guidanceText,
-            style: const TextStyle(
-                fontSize: 16,
+            style: TextStyle(
+                fontSize: fontSize,
                 color: Colors.blueAccent,
                 fontWeight: FontWeight.bold,
                 decoration: TextDecoration.none),
@@ -116,12 +123,18 @@ class _SoundMemoryTutorialOverlayState extends State<SoundMemoryTutorialOverlay>
 
   Widget _buildNextButton(SoundMemoryTutorialController tutorial) {
     final bool isWelcomeStep = tutorial.currentStepIndex == 0;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double btnFontSize = (screenWidth * 0.022).clamp(16.0, 28.0);
+    final double padH = (screenWidth * 0.03).clamp(24.0, 50.0);
+    final double padV = (screenWidth * 0.015).clamp(12.0, 24.0);
+
     return Positioned(
       bottom: 20,
-      right: 20,
+      right: (screenWidth * 0.25) + 20,       
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+          textStyle: TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
         ),
         onPressed: tutorial.nextStep,
         child: Text(isWelcomeStep ? 'Começar' : 'Próximo'),
@@ -130,14 +143,20 @@ class _SoundMemoryTutorialOverlayState extends State<SoundMemoryTutorialOverlay>
   }
 
   Widget _buildFinishButton(SoundMemoryTutorialController tutorial) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double btnFontSize = (screenWidth * 0.022).clamp(16.0, 28.0);
+    final double padH = (screenWidth * 0.03).clamp(24.0, 50.0);
+    final double padV = (screenWidth * 0.015).clamp(12.0, 24.0);
+
     return Positioned(
       bottom: 20,
-      right: 20,
+      right: (screenWidth * 0.25) + 20,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blueAccent,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+          textStyle: TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
         ),
         onPressed: tutorial.skipTutorial,
         child: const Text('Finalizar Tutorial'),
@@ -146,15 +165,21 @@ class _SoundMemoryTutorialOverlayState extends State<SoundMemoryTutorialOverlay>
   }
 
   Widget _buildSkipButton(SoundMemoryTutorialController tutorial) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double fontSize = (screenWidth * 0.022).clamp(16.0, 28.0);
+
     return Positioned(
       bottom: 20,
       left: 20,
       child: TextButton(
         onPressed: tutorial.skipTutorial,
-        child: const Text(
+        child: Text(
           'Pular Tutorial',
           style: TextStyle(
-              color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              color: Colors.blueAccent, 
+              fontSize: fontSize, 
+              fontWeight: FontWeight.bold
+          ),
         ),
       ),
     );

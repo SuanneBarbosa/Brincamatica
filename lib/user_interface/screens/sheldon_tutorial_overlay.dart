@@ -38,7 +38,6 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
 
      final bool isGameScreenInteractive = tutorial.isTutorialActive && tutorial.canTapHighlightedItem;
 
-
     return Stack(
       children: [
         ExcludeSemantics(
@@ -48,9 +47,11 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
         _buildTutorialLayer(tutorial),
         if (tutorial.isTutorialActive)
         const Positioned(
-          bottom: 50, 
+          bottom: 0, 
           right: 0,
+           child: ExcludeSemantics(
           child: VLibrasWidget(),
+           ),
         ),
       ],
     );
@@ -95,85 +96,84 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   }
 
 
-  Widget _buildGuidanceBox(MemoryTutorialController tutorial) {
-  if (tutorial.guidanceAlignment == Alignment.center ||
-      tutorial.highlightRect == null) {
-    return Center(
+Widget _buildGuidanceBox(MemoryTutorialController tutorial) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final double fontSize = (screenWidth * 0.025).clamp(16.0, 32.0);
+  final maxBoxWidth = screenWidth * 0.70; 
+
+    if (tutorial.guidanceAlignment == Alignment.center || tutorial.highlightRect == null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          width: maxBoxWidth,
+          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.only(left: 40),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, spreadRadius: 2)],
+          ),
+          child: Text(
+            tutorial.guidanceText,
+            style: TextStyle(
+              fontSize: fontSize, 
+              color: Colors.blueAccent, 
+              fontWeight: FontWeight.bold, 
+              decoration: TextDecoration.none
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    final rect = tutorial.highlightRect!;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final bool isBelow = tutorial.guidanceAlignment == Alignment.topCenter;
+    double top = isBelow ? rect.bottom + 30 : rect.top - 120;
+
+    if (top < 10) top = 10;
+    if (top > screenHeight - 110) top = screenHeight - 110;
+
+    return Positioned(
+      top: top,
+      left: 30,
+      width: maxBoxWidth - 30, 
       child: Container(
-        padding: const EdgeInsets.all(24),
-        margin: const EdgeInsets.symmetric(horizontal: 40),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              spreadRadius: 2,
-            ),
-          ],
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)],
         ),
         child: Text(
           tutorial.guidanceText,
-          style: const TextStyle(
-            fontSize: 16,
-            color: Colors.blueAccent,
-            fontWeight: FontWeight.bold,
-            decoration: TextDecoration.none,
+          style: TextStyle(
+            fontSize: fontSize, 
+            color: Colors.blueAccent, 
+            decoration: TextDecoration.none
           ),
           textAlign: TextAlign.center,
         ),
       ),
     );
-  }
-  final rect = tutorial.highlightRect!;
-  final screenHeight = MediaQuery.of(context).size.height;
-  final bool isBelow = tutorial.guidanceAlignment == Alignment.topCenter;
-
-  double top = isBelow ? rect.bottom + 30 : rect.top - 120;
-
-  if (top < 10) top = 10;
-  if (top > screenHeight - 110) top = screenHeight - 110;
-
-  return Positioned(
-    top: top,
-    left: 30,
-    right: 30,
-    child: Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Text(
-        tutorial.guidanceText,
-        style: const TextStyle(
-          fontSize: 16,
-          color: Colors.blueAccent,
-          decoration: TextDecoration.none,
-        ),
-        textAlign: TextAlign.center,
-      ),
-    ),
-  );
 }
 
- 
-  Widget _buildNextButton(MemoryTutorialController tutorial) {
+
+ Widget _buildNextButton(MemoryTutorialController tutorial) {
     final bool isWelcomeStep = tutorial.currentStepIndex == 0;
-    
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double btnFontSize = (screenWidth * 0.022).clamp(16.0, 28.0);
+    final double padH = (screenWidth * 0.03).clamp(24.0, 50.0);
+    final double padV = (screenWidth * 0.015).clamp(12.0, 24.0);
+
     return Positioned(
       bottom: 20,
-      right: 20,
+      right: (screenWidth * 0.25) + 20, 
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+          textStyle: TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
         ),
         onPressed: tutorial.nextStep,
         child: Text(isWelcomeStep ? 'Começar' : 'Próximo'),
@@ -182,14 +182,20 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   }
   
   Widget _buildFinishButton(MemoryTutorialController tutorial) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double btnFontSize = (screenWidth * 0.022).clamp(16.0, 28.0);
+    final double padH = (screenWidth * 0.03).clamp(24.0, 50.0);
+    final double padV = (screenWidth * 0.015).clamp(12.0, 24.0);
+
     return Positioned(
       bottom: 20,
-      right: 20,
+      right: (screenWidth * 0.25) + 20, 
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blueAccent,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+          textStyle: TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
         ),
         onPressed: () => tutorial.skipTutorial(context),
         child: const Text('Finalizar Tutorial'),
@@ -198,16 +204,25 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   }
 
   Widget _buildSkipButton(MemoryTutorialController tutorial) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double fontSize = (screenWidth * 0.022).clamp(16.0, 28.0);
+
     return Positioned(
       bottom: 20,
       left: 20,
       child: TextButton(
         onPressed: () => tutorial.skipTutorial(context),
-        child: const Text(
+        child: Text(
           'Pular Tutorial',
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.blueAccent, 
+            fontSize: fontSize, 
+            fontWeight: FontWeight.bold
+          ),
         ),
       ),
     );
   }
 }
+ 
+  

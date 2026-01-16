@@ -107,7 +107,7 @@ class CreateMelodyTutorialController extends ChangeNotifier {
   void _stepActionMenu() {
     _calculateHighlight(actionMenuKey);
     guidanceText = 'A barra inferior contém os botões de som disponíveis.';
-    guidanceAlignment = Alignment.topCenter;
+    guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
   }
@@ -115,7 +115,7 @@ class CreateMelodyTutorialController extends ChangeNotifier {
   void _stepAddSound() {
     _calculateHighlight(actionMenuKey);
     guidanceText = 'Toque em um botão para adicionar um som na posição do beija-flor.';
-    guidanceAlignment = Alignment.topCenter;
+    guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
   }
@@ -123,7 +123,7 @@ class CreateMelodyTutorialController extends ChangeNotifier {
   void _stepPlayButton() {
     _calculateHighlight(playButtonKey);
     guidanceText = 'Toque no botão "Play", à esquerda, para ouvir sua criação.';
-    guidanceAlignment = Alignment.topCenter;
+    guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
   }
