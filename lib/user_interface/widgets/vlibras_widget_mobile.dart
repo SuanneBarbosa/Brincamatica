@@ -112,7 +112,10 @@ class _VLibrasWidgetState extends State<VLibrasWidget> {
       ),
     );
 
-    _controller.loadHtmlString(_vlibrasHtml);
+   _controller.loadHtmlString(
+      _vlibrasHtml,
+      baseUrl: 'https://vlibras.gov.br/app/',
+    );
 
     VLibrasWidget._controller = _controller;
     VLibrasWidget._isWidgetReady = false;
@@ -200,10 +203,6 @@ const String _vlibrasHtml = r'''
       }
       [vw]{
         overflow: visible !important;
-      }
-
-      .vpw-controls, .vpw-settings, .vpw-header {
-        display: none !important;
       }
 
       #vlibrasText {

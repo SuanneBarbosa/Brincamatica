@@ -149,6 +149,8 @@ String _vlibrasHtml(double scale) => '''
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <base href="https://vlibras.gov.br/app/" />
+
     <style>
       html, body {
         background: transparent !important;
@@ -176,8 +178,6 @@ String _vlibrasHtml(double scale) => '''
       [vw]{
         overflow: visible !important;
       }
-
-      .vpw-controls, .vpw-settings, .vpw-header { display: none !important; }
 
       .vpw-guide,
       .vw-guide,
