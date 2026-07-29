@@ -1,8 +1,9 @@
-import 'package:Mathnew/user_interface/widgets/vlibras_widget.dart';
+import 'package:mathnew/user_interface/widgets/vlibras_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'combinesSound_service.dart';
 import 'orientation_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class GeneratorTutorialController extends ChangeNotifier {
   int _currentStepIndex = -1;
@@ -12,6 +13,7 @@ class GeneratorTutorialController extends ChangeNotifier {
   int get totalSteps => _tutorialSteps.length;
 
   bool _isInitialized = false;
+  bool _shouldShowVLibrasStep = false;
 
   final Map<String, GlobalKey> iconKeys = {};
   final confirmSelectionButtonKey = GlobalKey();
@@ -22,35 +24,51 @@ class GeneratorTutorialController extends ChangeNotifier {
   final userInputAreaKey = GlobalKey();
   final iconInputPanelKey = GlobalKey();
   final buttonConfirmKey = GlobalKey();
-  
+
   Rect? highlightRect;
   String guidanceText = '';
   Alignment guidanceAlignment = Alignment.center;
 
   late MelodyGeneratorController _gameController;
   final OrientationService _orientationService = OrientationService();
-  
+
   GeneratorTutorialController() {
     final iconTypes = [
-      "BaterPalma", "BaterPe", "BaterPeito", "BaterPerna", "Gritar", "Beijo", 
-      "Assobiar", "EstalarDedo", "EstalarLingua1", "EstalarLingua2"
+      "BaterPalma",
+      "BaterPe",
+      "BaterPeito",
+      "BaterPerna",
+      "Gritar",
+      "Beijo",
+      "Assobiar",
+      "EstalarDedo",
+      "EstalarLingua1",
+      "EstalarLingua2"
     ];
     for (var type in iconTypes) {
       iconKeys[type] = GlobalKey();
     }
   }
 
-  void start(BuildContext context, MelodyGeneratorController gameController) {
+  Future<void> start(
+      BuildContext context, MelodyGeneratorController gameController) async {
     _gameController = gameController;
+    bool alreadyShownAny =
+        await _orientationService.hasShownAnyTutorialGlobal();
+    _shouldShowVLibrasStep = kIsWeb || !alreadyShownAny;
+
+    if (_shouldShowVLibrasStep && !kIsWeb) {
+      await _orientationService.markAnyTutorialAsShownGlobal();
+    }
     _buildTutorialSequence(context);
-     _isInitialized = true; 
+    _isInitialized = true;
     nextStep();
   }
-  
+
   void _buildTutorialSequence(BuildContext context) {
     _tutorialSteps = [
+      if (_shouldShowVLibrasStep) _stepVLibrasIntro,
       _stepWelcome,
-      _stepNext,
       _stepSelectIconsIntro,
       _stepSelectIconsDemo,
       _stepConfirmSelection,
@@ -73,27 +91,29 @@ class GeneratorTutorialController extends ChangeNotifier {
       _finishTutorial();
     }
   }
-  
+
   void skipTutorial() {
     _finishTutorial();
   }
 
-  void _stepWelcome() {
+  void _stepVLibrasIntro() {
     highlightRect = null;
-    guidanceText = 'Bem-vindo! Toque em "Começar" ou em "Pular Tutorial".';
+    guidanceText =
+        'Ative o VLibras no ícone à direita depois toque em "Começar" ou apenas em "Começar" para seguir sem a tradução.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
   }
 
-   void _stepNext() {
+  void _stepWelcome() {
     highlightRect = null;
-    guidanceText = 'Para seguir o tutorial, toque em "Próximo" ou arraste para o lado.';
+    final String btnLabel = _currentStepIndex == 0 ? 'Começar' : 'Próximo';
+    guidanceText = 'Bem-vindo! Toque em "$btnLabel" ou em "Pular Tutorial".';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
   }
-  
+
   void _stepSelectIconsIntro() {
     _calculateHighlight(iconKeys["BaterPalma"]!);
     guidanceText = 'Selecione os sons desejados tocando nos ícones.';
@@ -113,27 +133,28 @@ class GeneratorTutorialController extends ChangeNotifier {
         ..clear()
         ..addAll(["BaterPalma", "BaterPe", "BaterPeito"]);
     });
-    
+
     notifyListeners();
   }
 
   void _stepConfirmSelection() {
     _calculateHighlight(confirmSelectionButtonKey);
-    guidanceText = 'Após a seleção, toque no botão "Confirmar", no canto superior direito.';
+    guidanceText =
+        'Após a seleção, toque no botão "Confirmar", no canto superior direito.';
     guidanceAlignment = Alignment.topCenter;
     _announce(guidanceText);
     notifyListeners();
   }
 
   void _stepSelectMode() {
-    guidanceText ='Após confirmar a seleção, escolha um modo de jogo.';
+    guidanceText = 'Após confirmar a seleção, escolha um modo de jogo.';
     guidanceAlignment = Alignment.bottomCenter;
     _announce(guidanceText);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!isTutorialActive) return;
       if (_gameController.state == GeneratorState.selectingIcons) {
-        _gameController.confirmIconSelection(); 
+        _gameController.confirmIconSelection();
       }
       if (_gameController.state == GeneratorState.selectingMode) {
         _calculateHighlight(modeSelectionFreeNoRepeatKey);
@@ -148,18 +169,19 @@ class GeneratorTutorialController extends ChangeNotifier {
     guidanceText = 'O objetivo é descobrir todas as combinações de sons.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!isTutorialActive) return;
-        if (_gameController.state == GeneratorState.selectingMode) {
-            _gameController.startFreePlayMode(false);
-        }
+      if (!isTutorialActive) return;
+      if (_gameController.state == GeneratorState.selectingMode) {
+        _gameController.startFreePlayMode(false);
+      }
     });
     notifyListeners();
   }
 
   void _stepMelodiesList() {
-    guidanceText = 'As combinações encontradas podem ser reproduzidas no botão lateral.';
+    guidanceText =
+        'As combinações encontradas podem ser reproduzidas no botão lateral.';
     guidanceAlignment = Alignment.topCenter;
     _announce(guidanceText);
 
@@ -177,56 +199,59 @@ class GeneratorTutorialController extends ChangeNotifier {
     _calculateHighlight(userInputAreaKey);
     guidanceText = 'A área abaixo mostra a sua combinação atual.';
     guidanceAlignment = Alignment.bottomCenter;
-     _announce(guidanceText);
+    _announce(guidanceText);
     notifyListeners();
   }
 
   void _stepInputPanel() {
     _calculateHighlight(iconInputPanelKey);
-    guidanceText = 'Use os botões na parte inferior para montar suas combinações.';
+    guidanceText =
+        'Use os botões na parte inferior para montar suas combinações.';
     guidanceAlignment = Alignment.bottomCenter;
-     _announce(guidanceText);
+    _announce(guidanceText);
     notifyListeners();
   }
 
-  void _stepConfirmAttempt(){
+  void _stepConfirmAttempt() {
     _calculateHighlight(buttonConfirmKey);
-    guidanceText = 'Toque no botão "Confirmar" quando completar todas as combinações.';
+    guidanceText =
+        'Toque no botão "Confirmar" quando completar todas as combinações.';
     guidanceAlignment = Alignment.bottomCenter;
     _announce(guidanceText);
     notifyListeners();
   }
 
-  void _stepWinCondition(){
-    highlightRect = null; 
-    guidanceText = 'Se estiver faltando alguma combinação, você voltará ao jogo.';
+  void _stepWinCondition() {
+    highlightRect = null;
+    guidanceText =
+        'Se estiver faltando alguma combinação, você voltará ao jogo.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
   }
-  
+
   void _stepEnd() {
-    highlightRect = null; 
-    guidanceText = 'Tutorial finalizado. Toque em "Finalizar" para jogar.';
+    highlightRect = null;
+    guidanceText = 'Toque em "Finalizar Tutorial" para entrar no jogo.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
   }
-  
+
   void _finishTutorial() {
-    if (!_isInitialized) return; 
+    if (!_isInitialized) return;
     _currentStepIndex = _tutorialSteps.length;
     highlightRect = null;
     guidanceText = '';
     _orientationService.markGeneratorGameTutorialAsShown();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-        _gameController.reset();
+      _gameController.reset();
     });
 
     _announce("Tutorial finalizado. Bom jogo!");
     notifyListeners();
   }
-  
+
   void _calculateHighlight(GlobalKey key) {
     Future.delayed(const Duration(milliseconds: 150), () {
       if (!isTutorialActive) return;
@@ -234,27 +259,23 @@ class GeneratorTutorialController extends ChangeNotifier {
       final renderBox = key.currentContext?.findRenderObject() as RenderBox?;
       if (renderBox != null && renderBox.hasSize) {
         final position = renderBox.localToGlobal(Offset.zero);
-        highlightRect = Rect.fromLTWH(
-          position.dx, position.dy,
-          renderBox.size.width, renderBox.size.height
-        );
+        highlightRect = Rect.fromLTWH(position.dx, position.dy,
+            renderBox.size.width, renderBox.size.height);
       } else {
         highlightRect = null;
       }
       notifyListeners();
     });
   }
-  
-  void _announce(String message) {
-   
-    bool isLastStep = _currentStepIndex >= _tutorialSteps.length - 1;
-    bool isWelcomeStep = _currentStepIndex == 0;
-    bool isNextStepInstruction = _currentStepIndex == 1;
-    String messageToSpeak = message;
-     
-    VLibrasWidget.buscarTraducao(message); 
 
-    if (isTutorialActive && !isLastStep && !isWelcomeStep && !isNextStepInstruction) {
+  void _announce(String message) {
+    bool isLastStep = _currentStepIndex >= _tutorialSteps.length - 1;
+    bool isIntroStep = _currentStepIndex <= (_shouldShowVLibrasStep ? 2 : 1);
+
+    String messageToSpeak = message;
+    VLibrasWidget.buscarTraducao(message);
+
+    if (isTutorialActive && !isLastStep && !isIntroStep) {
       messageToSpeak += ". Toque em próximo para continuar";
     }
 

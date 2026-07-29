@@ -1,4 +1,4 @@
-import 'package:Mathnew/user_interface/screens/tanks_screen.dart';
+import 'package:mathnew/user_interface/screens/tanks_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/character_service.dart';
@@ -21,12 +21,13 @@ class _SoundMemoryScreenState extends State<SoundMemoryScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (context.read<SoundMemoryController>().gameState == SoundMemoryState.notStarted) {
-         context.read<SoundMemoryController>().setupNewGame();
+      if (context.read<SoundMemoryController>().gameState ==
+          SoundMemoryState.notStarted) {
+        context.read<SoundMemoryController>().setupNewGame();
       }
     });
   }
-  
+
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     final minutes = twoDigits(duration.inMinutes.remainder(60));
@@ -34,7 +35,7 @@ class _SoundMemoryScreenState extends State<SoundMemoryScreen> {
     return "$minutes:$seconds";
   }
 
-   String _formatDurationForSemantics(Duration duration) {
+  String _formatDurationForSemantics(Duration duration) {
     final int minutes = duration.inMinutes.remainder(60);
     final int seconds = duration.inSeconds.remainder(60);
 
@@ -43,7 +44,7 @@ class _SoundMemoryScreenState extends State<SoundMemoryScreen> {
     if (minutes > 0) {
       parts.add('$minutes ${minutes == 1 ? "minuto" : "minutos"}');
     }
-    
+
     if (seconds > 0 || parts.isEmpty) {
       parts.add('$seconds ${seconds == 1 ? "segundo" : "segundos"}');
     }
@@ -51,23 +52,28 @@ class _SoundMemoryScreenState extends State<SoundMemoryScreen> {
     return parts.join(' e ');
   }
 
-void _showGameOverDialog(BuildContext context) {
+  void _showGameOverDialog(BuildContext context) {
     final controller = context.read<SoundMemoryController>();
     final String tempoFinalVisual = _formatDuration(controller.elapsedTime);
     final String conteudo = 'Você terminou em $tempoFinalVisual.';
-    final String tempoFinalFalado = _formatDurationForSemantics(controller.elapsedTime);
+    final String tempoFinalFalado =
+        _formatDurationForSemantics(controller.elapsedTime);
     final String conteudoFalado = 'Você terminou em $tempoFinalFalado.';
     const String titulo = 'Parabéns!';
-    const String instrucaoAcessibilidade = 'Clique no botão Jogar Novamente abaixo para reiniciar.';
-    final String fullSemanticLabel = '$titulo $conteudoFalado $instrucaoAcessibilidade';
+    const String instrucaoAcessibilidade =
+        'Clique no botão Jogar Novamente abaixo para reiniciar.';
+    final String fullSemanticLabel =
+        '$titulo $conteudoFalado $instrucaoAcessibilidade';
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          contentPadding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
           content: SingleChildScrollView(
             child: Semantics(
               label: fullSemanticLabel,
@@ -79,17 +85,19 @@ void _showGameOverDialog(BuildContext context) {
                     child: Text(
                       titulo,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 16),
                   const ExcludeSemantics(
-                    child: Icon(Icons.celebration, color: Colors.amber, size: 80),
+                    child:
+                        Icon(Icons.celebration, color: Colors.amber, size: 80),
                   ),
                   const SizedBox(height: 16),
                   ExcludeSemantics(
                     child: Text(
-                      conteudo, 
+                      conteudo,
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 18),
                     ),
@@ -99,7 +107,8 @@ void _showGameOverDialog(BuildContext context) {
                     icon: const Icon(Icons.refresh),
                     label: const Text('Jogar Novamente'),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
                       textStyle: const TextStyle(fontSize: 16),
                     ),
                     onPressed: () {
@@ -118,13 +127,16 @@ void _showGameOverDialog(BuildContext context) {
     );
   }
 
-
   String _getIconImagePath(String iconType, String gender, String tone) {
     String basePath = 'assets/images/buttons/button_';
     String imagePath;
     switch (iconType) {
-      case "BaterPalma": imagePath = '${basePath}bater_palma_${tone}_transp.png'; break;
-      case "EstalarDedo": imagePath = '${basePath}estalar_dedo_${tone}_transp.png'; break;
+      case "BaterPalma":
+        imagePath = '${basePath}bater_palma_${tone}_transp.png';
+        break;
+      case "EstalarDedo":
+        imagePath = '${basePath}estalar_dedo_${tone}_transp.png';
+        break;
       case "BaterPeito":
       case "BaterPe":
       case "BaterPerna":
@@ -133,10 +145,14 @@ void _showGameOverDialog(BuildContext context) {
       case "Assobiar":
       case "EstalarLingua1":
       case "EstalarLingua2":
-        String snakeCaseType = iconType.replaceAllMapped(RegExp(r'[A-Z]'), (match) => '_${match.group(0)?.toLowerCase()}').substring(1);
+        String snakeCaseType = iconType
+            .replaceAllMapped(RegExp(r'[A-Z]'),
+                (match) => '_${match.group(0)?.toLowerCase()}')
+            .substring(1);
         imagePath = '$basePath${snakeCaseType}_${gender}_${tone}_transp.png';
         break;
-      default: imagePath = 'assets/images/placeholder.png';
+      default:
+        imagePath = 'assets/images/placeholder.png';
     }
     return imagePath;
   }
@@ -174,9 +190,9 @@ void _showGameOverDialog(BuildContext context) {
             children: [
               _buildStatusArea(gameController),
               const SizedBox(height: 10),
-             
               if (gameController.cards.isEmpty)
-                const Expanded(child: Center(child: CircularProgressIndicator()))
+                const Expanded(
+                    child: Center(child: CircularProgressIndicator()))
               else
                 Expanded(
                   child: _buildGameBoard(gameController, gender, tone),
@@ -202,20 +218,16 @@ void _showGameOverDialog(BuildContext context) {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
-          
           const Divider(),
           ListTile(
             leading: const Icon(Icons.tune, color: Colors.blue),
             title: const Text('Nível de Dificuldade'),
             subtitle: Consumer<SoundMemoryController>(
-              builder: (context, controller, child) {
-                return Text(
-                  controller.currentPairCountSetting == 6 
-                  ? "Fácil" 
-                  : "Difícil"
-                );
-              }
-            ),
+                builder: (context, controller, child) {
+              return Text(controller.currentPairCountSetting == 6
+                  ? "Fácil"
+                  : "Difícil");
+            }),
           ),
           Consumer<SoundMemoryController>(
             builder: (context, controller, child) {
@@ -242,17 +254,19 @@ void _showGameOverDialog(BuildContext context) {
               );
             },
           ),
-
           const Divider(),
           ListTile(
             leading: const Icon(Icons.help_outline, color: Colors.blue),
             title: const Text('Instruções de Uso'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const SoundMemoryInstructionsScreen()));
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const SoundMemoryInstructionsScreen()));
             },
           ),
-            ListTile(
+          ListTile(
             leading: const Icon(Icons.handshake, color: Colors.blue),
             title: const Text('Agradecimentos'),
             onTap: () {
@@ -266,7 +280,10 @@ void _showGameOverDialog(BuildContext context) {
             title: const Text('Sobre'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutSoundMemoryScreen()));
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const AboutSoundMemoryScreen()));
             },
           ),
         ],
@@ -275,98 +292,105 @@ void _showGameOverDialog(BuildContext context) {
   }
 
   Widget _buildStatusArea(SoundMemoryController controller) {
- 
     Widget statusContent;
 
-   if (controller.gameState == SoundMemoryState.notStarted) {
-      statusContent = Semantics( 
-        label: 'Iniciar o jogo da Memória', 
-        button: true, 
+    if (controller.gameState == SoundMemoryState.notStarted) {
+      statusContent = Semantics(
+        label: 'Iniciar o jogo da Memória',
+        button: true,
         child: ElevatedButton.icon(
           icon: const Icon(Icons.play_arrow),
           label: const Text('Iniciar'),
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            textStyle:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           onPressed: controller.startGame,
         ),
       );
- }   else if (controller.gameState == SoundMemoryState.playing) {
-      final String timeForSpeech = _formatDurationForSemantics(controller.elapsedTime);
-      final String pairsForSpeech = 'Pares encontrados: ${controller.pairsFound} de ${controller.totalPairs}';
-      final String fullSemanticsLabel = 'Tempo de jogo: $timeForSpeech. $pairsForSpeech';
+    } else if (controller.gameState == SoundMemoryState.playing) {
+      final String timeForSpeech =
+          _formatDurationForSemantics(controller.elapsedTime);
+      final String pairsForSpeech =
+          'Pares encontrados: ${controller.pairsFound} de ${controller.totalPairs}';
+      final String fullSemanticsLabel =
+          'Tempo de jogo: $timeForSpeech. $pairsForSpeech';
 
-    
       statusContent = Semantics(
         label: fullSemanticsLabel,
-        liveRegion: false, 
-        child: ExcludeSemantics( 
+        liveRegion: false,
+        child: ExcludeSemantics(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.timer_outlined, color: Colors.blue, size: 35,),
+              const Icon(
+                Icons.timer_outlined,
+                color: Colors.blue,
+                size: 35,
+              ),
               const SizedBox(width: 4),
-              Text(
-                _formatDuration(controller.elapsedTime),
-              style: const TextStyle(
+              Text(_formatDuration(controller.elapsedTime),
+                  style: const TextStyle(
                       fontSize: 25,
                       fontWeight: FontWeight.w800,
-                      color: Colors.blue)
-              ),
+                      color: Colors.blue)),
               const SizedBox(width: 20),
-              Text(
-                'Pares: ${controller.pairsFound} / ${controller.totalPairs}',
-                style: const TextStyle(
+              Text('Pares: ${controller.pairsFound} / ${controller.totalPairs}',
+                  style: const TextStyle(
                       fontSize: 25,
                       fontWeight: FontWeight.w800,
-                      color: Colors.blue)
-              ),
+                      color: Colors.blue)),
             ],
           ),
         ),
       );
-    } else { 
+    } else {
       statusContent = const Text(
         'Jogo da Memória',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+        style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.blueAccent),
       );
     }
 
     return SafeArea(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Builder(builder: (context) {
-              return Semantics(
-                label: 'Abrir menu do Jogo da Memória',
-                button: true,
-                child: IconButton(
-                  icon: const Icon(Icons.menu, color: Colors.blue, size: 30),
-                  tooltip: "Abrir menu",
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                ),
-              );
-            }),
-           
-            statusContent,
-            const SizedBox(width: 48), 
-          ],
-        ),
-      
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Builder(builder: (context) {
+            return Semantics(
+              label: 'Abrir menu do Jogo da Memória',
+              button: true,
+              child: IconButton(
+                icon: const Icon(Icons.menu, color: Colors.blue, size: 30),
+                tooltip: "Abrir menu",
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+            );
+          }),
+          statusContent,
+          const SizedBox(width: 48),
+        ],
+      ),
     );
   }
 
-  Widget _buildGameBoard(SoundMemoryController controller, String gender, String tone) {
+  Widget _buildGameBoard(
+      SoundMemoryController controller, String gender, String tone) {
     return LayoutBuilder(builder: (context, constraints) {
       final int crossAxisCount = controller.totalPairs == 10 ? 5 : 4;
-      
+
       const mainAxisSpacing = 10.0;
       const crossAxisSpacing = 10.0;
-      final itemWidth = (constraints.maxWidth - (crossAxisCount - 1) * crossAxisSpacing) / crossAxisCount;
+      final itemWidth =
+          (constraints.maxWidth - (crossAxisCount - 1) * crossAxisSpacing) /
+              crossAxisCount;
       final int rowCount = (controller.cards.length / crossAxisCount).ceil();
-      final itemHeight = (constraints.maxHeight - (rowCount -1 ) * mainAxisSpacing) / rowCount;
-      
+      final itemHeight =
+          (constraints.maxHeight - (rowCount - 1) * mainAxisSpacing) / rowCount;
+
       final aspectRatio = itemWidth / itemHeight;
 
       return GridView.builder(
@@ -386,11 +410,16 @@ void _showGameOverDialog(BuildContext context) {
     });
   }
 
-  Widget _buildCard(SoundMemoryController controller, SoundMemoryCard card, int index, String gender, String tone) {
-    final bool isInteractable = controller.gameState == SoundMemoryState.playing && !card.isMatched && !card.isFlipped;
+  Widget _buildCard(SoundMemoryController controller, SoundMemoryCard card,
+      int index, String gender, String tone) {
+    final bool isInteractable =
+        controller.gameState == SoundMemoryState.playing &&
+            !card.isMatched &&
+            !card.isFlipped;
     String semanticsHint = isInteractable ? "Toque para virar a carta." : "";
     if (card.isMatched) semanticsHint = "Par já encontrado.";
-    if (card.isFlipped && !card.isMatched) semanticsHint = "Carta virada, aguardando par.";
+    if (card.isFlipped && !card.isMatched)
+      semanticsHint = "Carta virada, aguardando par.";
 
     return AnimatedOpacity(
       opacity: card.isMatched ? 0.0 : 1.0,
@@ -402,7 +431,8 @@ void _showGameOverDialog(BuildContext context) {
           }
         },
         child: Semantics(
-          label: "Carta ${index + 1}. ${card.isFlipped || card.isMatched ? controller.getSemanticsLabelFromType(card.type) : 'Verso da carta'}",
+          label:
+              "Carta ${index + 1}. ${card.isFlipped || card.isMatched ? controller.getSemanticsLabelFromType(card.type) : 'Verso da carta'}",
           hint: semanticsHint,
           button: isInteractable,
           hidden: card.isMatched,
@@ -418,14 +448,15 @@ void _showGameOverDialog(BuildContext context) {
                   ? Padding(
                       key: ValueKey('front_${card.id}'),
                       padding: const EdgeInsets.all(8.0),
-                      child: Image.asset(_getIconImagePath(card.type, gender, tone)),
+                      child: Image.asset(
+                          _getIconImagePath(card.type, gender, tone)),
                     )
                   : Container(
                       key: ValueKey('back_${card.id}'),
                       alignment: Alignment.center,
                       padding: const EdgeInsets.all(8.0),
                       child: FittedBox(
-                        fit: BoxFit.scaleDown, 
+                        fit: BoxFit.scaleDown,
                         child: Text(
                           '${index + 1}',
                           style: const TextStyle(
@@ -442,5 +473,4 @@ void _showGameOverDialog(BuildContext context) {
       ),
     );
   }
-
 }

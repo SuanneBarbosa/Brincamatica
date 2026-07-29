@@ -1,7 +1,7 @@
-import 'package:Mathnew/services/sheldon_tutorial_service.dart';
-import 'package:Mathnew/user_interface/screens/about_sheldon_screen.dart';
-import 'package:Mathnew/user_interface/screens/instruction_sheldon_screen.dart';
-import 'package:Mathnew/user_interface/widgets/app_drawer_header.dart';
+import 'package:mathnew/services/sheldon_tutorial_service.dart';
+import 'package:mathnew/user_interface/screens/about_sheldon_screen.dart';
+import 'package:mathnew/user_interface/screens/instruction_sheldon_screen.dart';
+import 'package:mathnew/user_interface/widgets/app_drawer_header.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/character_service.dart';

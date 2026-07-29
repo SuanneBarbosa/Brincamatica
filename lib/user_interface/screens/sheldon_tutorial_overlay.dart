@@ -1,4 +1,4 @@
-import 'package:Mathnew/user_interface/widgets/vlibras_widget.dart';
+import 'package:mathnew/user_interface/widgets/vlibras_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/sheldon_service.dart';
@@ -23,7 +23,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
       tutorialController.start(context, gameController);
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final tutorial = context.watch<MemoryTutorialController>();
@@ -36,7 +36,8 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
       statusBarKey: tutorial.statusKey,
     );
 
-     final bool isGameScreenInteractive = tutorial.isTutorialActive && tutorial.canTapHighlightedItem;
+    final bool isGameScreenInteractive =
+        tutorial.isTutorialActive && tutorial.canTapHighlightedItem;
 
     return Stack(
       children: [
@@ -46,32 +47,34 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
         ),
         _buildTutorialLayer(tutorial),
         if (tutorial.isTutorialActive)
-        const Positioned(
-          bottom: 0, 
-          right: 0,
-           child: ExcludeSemantics(
-          child: VLibrasWidget(),
-           ),
-        ),
+          const Positioned(
+            bottom: 0,
+            right: 0,
+            child: ExcludeSemantics(
+              child: VLibrasWidget(),
+            ),
+          ),
       ],
     );
   }
 
   Widget _buildTutorialLayer(MemoryTutorialController tutorial) {
-    final bool isLastStep = tutorial.currentStepIndex == tutorial.totalSteps - 1;
+    final bool isLastStep =
+        tutorial.currentStepIndex == tutorial.totalSteps - 1;
     final bool isFirstStep = tutorial.currentStepIndex == 0;
-    
+
     return GestureDetector(
       onHorizontalDragEnd: (details) {
-       bool isSwipeNext = details.primaryVelocity != null && details.primaryVelocity! < 0;
-                if (isSwipeNext && !isFirstStep && !isLastStep) {
-                  tutorial.nextStep();
-                }
+        bool isSwipeNext =
+            details.primaryVelocity != null && details.primaryVelocity! < 0;
+        if (isSwipeNext && !isFirstStep && !isLastStep) {
+          tutorial.nextStep();
+        }
       },
       child: Semantics(
         label: 'Camada do tutorial',
-         scopesRoute: true, 
-         explicitChildNodes: true, 
+        scopesRoute: true,
+        explicitChildNodes: true,
         child: Stack(
           children: [
             GestureDetector(
@@ -95,13 +98,13 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
     );
   }
 
+  Widget _buildGuidanceBox(MemoryTutorialController tutorial) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double fontSize = (screenWidth * 0.025).clamp(16.0, 32.0);
+    final maxBoxWidth = screenWidth * 0.70;
 
-Widget _buildGuidanceBox(MemoryTutorialController tutorial) {
-  final screenWidth = MediaQuery.of(context).size.width;
-  final double fontSize = (screenWidth * 0.025).clamp(16.0, 32.0);
-  final maxBoxWidth = screenWidth * 0.70; 
-
-    if (tutorial.guidanceAlignment == Alignment.center || tutorial.highlightRect == null) {
+    if (tutorial.guidanceAlignment == Alignment.center ||
+        tutorial.highlightRect == null) {
       return Align(
         alignment: Alignment.centerLeft,
         child: Container(
@@ -111,16 +114,20 @@ Widget _buildGuidanceBox(MemoryTutorialController tutorial) {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(15),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, spreadRadius: 2)],
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  spreadRadius: 2)
+            ],
           ),
           child: Text(
             tutorial.guidanceText,
             style: TextStyle(
-              fontSize: fontSize, 
-              color: Colors.blueAccent, 
-              fontWeight: FontWeight.bold, 
-              decoration: TextDecoration.none
-            ),
+                fontSize: fontSize,
+                color: Colors.blueAccent,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.none),
             textAlign: TextAlign.center,
           ),
         ),
@@ -138,29 +145,29 @@ Widget _buildGuidanceBox(MemoryTutorialController tutorial) {
     return Positioned(
       top: top,
       left: 30,
-      width: maxBoxWidth - 30, 
+      width: maxBoxWidth - 30,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)],
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)
+          ],
         ),
         child: Text(
           tutorial.guidanceText,
           style: TextStyle(
-            fontSize: fontSize, 
-            color: Colors.blueAccent, 
-            decoration: TextDecoration.none
-          ),
+              fontSize: fontSize,
+              color: Colors.blueAccent,
+              decoration: TextDecoration.none),
           textAlign: TextAlign.center,
         ),
       ),
     );
-}
+  }
 
-
- Widget _buildNextButton(MemoryTutorialController tutorial) {
+  Widget _buildNextButton(MemoryTutorialController tutorial) {
     final bool isWelcomeStep = tutorial.currentStepIndex == 0;
     final screenWidth = MediaQuery.of(context).size.width;
     final double btnFontSize = (screenWidth * 0.022).clamp(16.0, 28.0);
@@ -169,18 +176,19 @@ Widget _buildGuidanceBox(MemoryTutorialController tutorial) {
 
     return Positioned(
       bottom: 20,
-      right: (screenWidth * 0.25) + 20, 
+      right: (screenWidth * 0.25) + 20,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
-          textStyle: TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
+          textStyle:
+              TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
         ),
         onPressed: tutorial.nextStep,
         child: Text(isWelcomeStep ? 'Começar' : 'Próximo'),
       ),
     );
   }
-  
+
   Widget _buildFinishButton(MemoryTutorialController tutorial) {
     final screenWidth = MediaQuery.of(context).size.width;
     final double btnFontSize = (screenWidth * 0.022).clamp(16.0, 28.0);
@@ -189,13 +197,14 @@ Widget _buildGuidanceBox(MemoryTutorialController tutorial) {
 
     return Positioned(
       bottom: 20,
-      right: (screenWidth * 0.25) + 20, 
+      right: (screenWidth * 0.25) + 20,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blueAccent,
           foregroundColor: Colors.white,
           padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
-          textStyle: TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
+          textStyle:
+              TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
         ),
         onPressed: () => tutorial.skipTutorial(context),
         child: const Text('Finalizar Tutorial'),
@@ -215,14 +224,11 @@ Widget _buildGuidanceBox(MemoryTutorialController tutorial) {
         child: Text(
           'Pular Tutorial',
           style: TextStyle(
-            color: Colors.blueAccent, 
-            fontSize: fontSize, 
-            fontWeight: FontWeight.bold
-          ),
+              color: Colors.blueAccent,
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 }
- 
-  

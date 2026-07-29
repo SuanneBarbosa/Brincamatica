@@ -7,6 +7,7 @@ class OrientationService {
   static const String _generatorGameTutorialShownKey = 'generator_game_tutorial_shown';
   static const String _soundMemoryTutorialShownKey = 'sound_memory_tutorial_shown';
   static const String _createMelodyTutorialShownKey = 'create_melody_tutorial_shown';
+  static const String _anyTutorialGlobalKey = 'any_tutorial_global_shown';
 
   Future<bool> hasShownOrientation() async {
     final prefs = await SharedPreferences.getInstance();
@@ -56,5 +57,15 @@ class OrientationService {
   Future<void> markCreateMelodyTutorialAsShown() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_createMelodyTutorialShownKey, true);
+  }
+
+    Future<bool> hasShownAnyTutorialGlobal() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_anyTutorialGlobalKey) ?? false;
+  }
+
+  Future<void> markAnyTutorialAsShownGlobal() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_anyTutorialGlobalKey, true);
   }
 }

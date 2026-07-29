@@ -1,6 +1,7 @@
-import 'package:Mathnew/user_interface/widgets/vlibras_widget.dart';
+import 'package:mathnew/user_interface/widgets/vlibras_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'orientation_service.dart';
 import 'sound_memory_service.dart';
 
@@ -18,24 +19,33 @@ class SoundMemoryTutorialController extends ChangeNotifier {
   // ignore: unused_field
   late SoundMemoryController _gameController;
   final OrientationService _orientationService = OrientationService();
-
-  void start(BuildContext context, SoundMemoryController gameController) {
+  bool _shouldShowVLibrasIntro = false;
+  Future<void> start(
+      BuildContext context, SoundMemoryController gameController) async {
     _gameController = gameController;
+    bool alreadyShownAnyGlobal =
+        await _orientationService.hasShownAnyTutorialGlobal();
+    _shouldShowVLibrasIntro = kIsWeb || !alreadyShownAnyGlobal;
+
+    if (_shouldShowVLibrasIntro && !kIsWeb) {
+      await _orientationService.markAnyTutorialAsShownGlobal();
+    }
+
     _buildTutorialSequence(context);
     nextStep();
   }
 
   void _buildTutorialSequence(BuildContext context) {
     _tutorialSteps = [
+      if (_shouldShowVLibrasIntro) _stepVLibrasIntro,
       _stepWelcome,
-      _stepNext,          
-      _stepStartButton,   
-      _stepDifficulty,   
-      _stepMenuSettings,  
-      _stepGoal,          
-      _stepCardAction,    
-      _stepVisualAid,     
-      _stepAudioFeedback, 
+      _stepStartButton,
+      _stepDifficulty,
+      _stepMenuSettings,
+      _stepGoal,
+      _stepCardAction,
+      _stepVisualAid,
+      _stepAudioFeedback,
       _stepGameEnd,
       _stepEnd,
     ];
@@ -54,18 +64,19 @@ class SoundMemoryTutorialController extends ChangeNotifier {
     _finishTutorial();
   }
 
-
-  void _stepWelcome() {
+  void _stepVLibrasIntro() {
     highlightRect = null;
-    guidanceText = 'Bem-vindo! Toque em "Começar" ou em "Pular Tutorial".';
+    guidanceText =
+        'Ative o VLibras no ícone à direita depois toque em "Começar" ou apenas em "Começar" para seguir sem a tradução.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
   }
 
-  void _stepNext() {
+  void _stepWelcome() {
     highlightRect = null;
-    guidanceText = 'Para seguir o tutorial, toque em "Próximo" ou arraste para o lado.';
+    final String btnLabel = _currentStepIndex == 0 ? 'Começar' : 'Próximo';
+    guidanceText = 'Bem-vindo! Toque em "$btnLabel" ou em "Pular Tutorial".';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
@@ -86,10 +97,11 @@ class SoundMemoryTutorialController extends ChangeNotifier {
     _announce(guidanceText);
     notifyListeners();
   }
-      
+
   void _stepMenuSettings() {
     highlightRect = null;
-    guidanceText = 'Para jogar com 10 pares, mude a dificuldade no menu lateral.';
+    guidanceText =
+        'Para jogar com 10 pares, mude a dificuldade no menu lateral.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
@@ -137,7 +149,7 @@ class SoundMemoryTutorialController extends ChangeNotifier {
 
   void _stepEnd() {
     highlightRect = null;
-    guidanceText = 'Tutorial finalizado! Toque em "Finalizar" para jogar.';
+    guidanceText = 'Toque em "Finalizar Tutorial" para entrar no jogo.';
     guidanceAlignment = Alignment.center;
     _announce(guidanceText);
     notifyListeners();
@@ -152,17 +164,15 @@ class SoundMemoryTutorialController extends ChangeNotifier {
     notifyListeners();
   }
 
-  
   void _announce(String message) {
-   
     bool isLastStep = _currentStepIndex >= _tutorialSteps.length - 1;
-    bool isWelcomeStep = _currentStepIndex == 0;
-    bool isNextStepInstruction = _currentStepIndex == 1;
-    String messageToSpeak = message;
-    VLibrasWidget.buscarTraducao(message); 
+    bool isInitialStep = _currentStepIndex == 0;
+    bool isSecondaryStep = _currentStepIndex == 1;
 
-  
-    if (isTutorialActive && !isLastStep && !isWelcomeStep && !isNextStepInstruction) {
+    String messageToSpeak = message;
+    VLibrasWidget.buscarTraducao(message);
+
+    if (isTutorialActive && !isLastStep && !isInitialStep && !isSecondaryStep) {
       messageToSpeak += ". Toque em próximo para continuar";
     }
 

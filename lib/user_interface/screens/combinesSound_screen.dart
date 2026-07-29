@@ -1,4 +1,4 @@
-import 'package:Mathnew/user_interface/screens/tanks_screen.dart';
+import 'package:mathnew/user_interface/screens/tanks_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -129,10 +129,8 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
-                        textStyle:
-                            const TextStyle(fontWeight: FontWeight.bold),
-                        backgroundColor:
-                            canConfirm ? Colors.blue : Colors.grey,
+                        textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                        backgroundColor: canConfirm ? Colors.blue : Colors.grey,
                         foregroundColor: Colors.white,
                       ),
                       onPressed: canConfirm
@@ -193,12 +191,12 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
         );
 
         if (controller.isLevelsMode) {
-
           final String levelTypeText = controller.currentLevel.withRepetition
               ? 'Com Repetição'
               : 'Sem Repetição';
-        
-          final String levelTitle = 'Desafio Nível ${controller.currentLevelIndex + 1} - $levelTypeText';
+
+          final String levelTitle =
+              'Desafio Nível ${controller.currentLevelIndex + 1} - $levelTypeText';
           titleWidget = Semantics(
             header: true,
             child: Text(
@@ -231,15 +229,15 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
               child: IconButton(
                 icon: const Icon(Icons.arrow_back),
                 tooltip: "Voltar para seleção",
-                onPressed:
-                    tutorialController.isTutorialActive ? null : controller.reset,
+                onPressed: tutorialController.isTutorialActive
+                    ? null
+                    : controller.reset,
               ),
             ),
           ),
           title: ExcludeSemantics(
-            excluding: tutorialController.isTutorialActive,
-            child: titleWidget
-          ),
+              excluding: tutorialController.isTutorialActive,
+              child: titleWidget),
           centerTitle: true,
           actions: const [SizedBox(width: 48)],
         );
@@ -360,8 +358,8 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
 
   void _showGameWonDialog(BuildContext context) {
     final controller = context.read<MelodyGeneratorController>();
-    final bool wonLevels =
-        controller.isLevelsMode || _previousState == GeneratorState.levelComplete;
+    final bool wonLevels = controller.isLevelsMode ||
+        _previousState == GeneratorState.levelComplete;
 
     showDialog(
       context: context,
@@ -778,124 +776,125 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
     );
   }
 
-
   Widget _buildMelodyItemWidget({
-  required MelodyGeneratorController controller,
-  required GeneratorTutorialController tutorialController,
-  required int originalIndex,
-  required String gender,
-  required String tone,
-}) {
-  final melody = controller.generatedMelodies[originalIndex];
-  final bool isCompleted = controller.completedMelodies[originalIndex]; 
-  final bool showHint =
-      controller.isLevelsMode ? controller.currentLevel.hasHint : true;
+    required MelodyGeneratorController controller,
+    required GeneratorTutorialController tutorialController,
+    required int originalIndex,
+    required String gender,
+    required String tone,
+  }) {
+    final melody = controller.generatedMelodies[originalIndex];
+    final bool isCompleted = controller.completedMelodies[originalIndex];
+    final bool showHint =
+        controller.isLevelsMode ? controller.currentLevel.hasHint : true;
 
-  final bool isMostRecent = controller.mostRecentFoundIndex == originalIndex;
-  final screenWidth = MediaQuery.of(context).size.width;
+    final bool isMostRecent = controller.mostRecentFoundIndex == originalIndex;
+    final screenWidth = MediaQuery.of(context).size.width;
 
-  final double iconSize = (screenWidth * 0.05).clamp(28.0, 40.0);
-  final double trailingIconSize = (screenWidth * 0.045).clamp(26.0, 32.0);
+    final double iconSize = (screenWidth * 0.05).clamp(28.0, 40.0);
+    final double trailingIconSize = (screenWidth * 0.045).clamp(26.0, 32.0);
 
-  final melodyLabels =
-      melody.map((icon) => controller.getSemanticsLabelFromType(icon)).toList();
+    final melodyLabels = melody
+        .map((icon) => controller.getSemanticsLabelFromType(icon))
+        .toList();
 
-  String melodyDescription;
-  if (isCompleted) {
-    melodyDescription = "Combinação encontrada: ${melodyLabels.join(', ')}.";
-  } else {
-    melodyDescription =
-        "Combinação oculta. ${showHint ? 'Dica do primeiro som: ${melodyLabels.first}.' : ''} Faltam ${melody.length} sons.";
-  }
+    String melodyDescription;
+    if (isCompleted) {
+      melodyDescription = "Combinação encontrada: ${melodyLabels.join(', ')}.";
+    } else {
+      melodyDescription =
+          "Combinação oculta. ${showHint ? 'Dica do primeiro som: ${melodyLabels.first}.' : ''} Faltam ${melody.length} sons.";
+    }
 
-  final bool excludePlayButton = tutorialController.isTutorialActive &&
-      tutorialController.currentStepIndex != 5;
+    final bool excludePlayButton = tutorialController.isTutorialActive &&
+        tutorialController.currentStepIndex != 5;
 
-  final bool excludeMelodyDescription = tutorialController.isTutorialActive;
+    final bool excludeMelodyDescription = tutorialController.isTutorialActive;
 
-
-  return Card(
-    margin: const EdgeInsets.symmetric(vertical: 4),
-    color: isMostRecent ? Colors.yellow.shade100 : Colors.white,
-    elevation: isMostRecent ? 4 : 2,
-    child: Row(
-      children: [
-        Expanded(
-          child: ExcludeSemantics(
-            excluding: excludeMelodyDescription,
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      color: isMostRecent ? Colors.yellow.shade100 : Colors.white,
+      elevation: isMostRecent ? 4 : 2,
+      child: Row(
+        children: [
+          Expanded(
+            child: ExcludeSemantics(
+              excluding: excludeMelodyDescription,
+              child: Semantics(
+                label: melodyDescription,
+                child: ExcludeSemantics(
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                        child: Icon(
+                          isCompleted
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          color: isCompleted ? Colors.green : Colors.grey,
+                        ),
+                      ),
+                      Expanded(
+                        child: Wrap(
+                          spacing: 4.0,
+                          runSpacing: 4.0,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            if (isCompleted)
+                              ...melody.map((iconType) => Image.asset(
+                                  _getIconImagePath(iconType, gender, tone),
+                                  height: iconSize))
+                            else ...[
+                              if (showHint)
+                                Image.asset(
+                                    _getIconImagePath(
+                                        melody.first, gender, tone),
+                                    height: iconSize)
+                              else
+                                _buildHiddenIcon(size: iconSize),
+                              ...List.generate(melody.length - 1,
+                                  (_) => _buildHiddenIcon(size: iconSize)),
+                            ]
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          ExcludeSemantics(
+            excluding: excludePlayButton,
             child: Semantics(
-              label: melodyDescription,
-              child: ExcludeSemantics(
-                child: Row(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                      child: Icon(
-                        isCompleted
-                            ? Icons.check_circle
-                            : Icons.radio_button_unchecked,
-                        color: isCompleted ? Colors.green : Colors.grey,
-                      ),
-                    ),
-                    Expanded(
-                      child: Wrap(
-                        spacing: 4.0,
-                        runSpacing: 4.0,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          if (isCompleted)
-                            ...melody.map((iconType) => Image.asset(
-                                _getIconImagePath(iconType, gender, tone),
-                                height: iconSize))
-                          else ...[
-                            if (showHint)
-                              Image.asset(
-                                  _getIconImagePath(melody.first, gender, tone),
-                                  height: iconSize)
-                            else
-                              _buildHiddenIcon(size: iconSize),
-                            ...List.generate(melody.length - 1,
-                                (_) => _buildHiddenIcon(size: iconSize)),
-                          ]
-                        ],
-                      ),
-                    ),
-                  ],
+              label: isCompleted
+                  ? "Ouvir a melodia"
+                  : "Botão de ouvir desabilitado",
+              hint: isCompleted
+                  ? "Toque duas vezes no botão para ouvir a melodia encontrada"
+                  : "Descubra a combinação para poder ouvi-la",
+              button: true,
+              enabled: isCompleted,
+              child: Tooltip(
+                message: isCompleted
+                    ? "Ouvir melodia"
+                    : "Descubra a melodia para poder ouvir",
+                child: IconButton(
+                  icon: Icon(
+                    Icons.play_circle_outline,
+                    color: isCompleted ? Colors.blue : Colors.grey,
+                    size: trailingIconSize,
+                  ),
+                  onPressed:
+                      isCompleted ? () => controller.playMelody(melody) : null,
                 ),
               ),
             ),
           ),
-        ),
-        ExcludeSemantics(
-          excluding: excludePlayButton,
-          child: Semantics(
-            label: isCompleted
-                ? "Ouvir a melodia"
-                : "Botão de ouvir desabilitado",
-            hint: isCompleted
-                ? "Toque duas vezes no botão para ouvir a melodia encontrada"
-                : "Descubra a combinação para poder ouvi-la",
-            button: true,
-            enabled: isCompleted, 
-            child: Tooltip(
-              message: isCompleted
-                  ? "Ouvir melodia"
-                  : "Descubra a melodia para poder ouvir",
-              child: IconButton(
-                icon: Icon(
-                  Icons.play_circle_outline,
-                  color: isCompleted ? Colors.blue : Colors.grey,
-                  size: trailingIconSize,
-                ),
-                onPressed: isCompleted ? () => controller.playMelody(melody) : null,
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _buildHiddenIcon({required double size}) {
     return Container(
@@ -1004,7 +1003,7 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
           ),
           const SizedBox(width: 8),
           SizedBox(
-             key: widget.buttonConfirmKey,
+            key: widget.buttonConfirmKey,
             height: minContainerHeight,
             child: Semantics(
               label: "Confirmar",
@@ -1067,8 +1066,7 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
                                     style: ElevatedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 24, vertical: 12),
-                                      textStyle:
-                                          const TextStyle(fontSize: 16),
+                                      textStyle: const TextStyle(fontSize: 16),
                                     ),
                                     onPressed: () {
                                       Navigator.of(dialogContext).pop();
@@ -1189,4 +1187,3 @@ class _MelodyGeneratorScreenState extends State<MelodyGeneratorScreen> {
     return imagePath;
   }
 }
-

@@ -1,6 +1,7 @@
-import 'package:Mathnew/user_interface/widgets/vlibras_widget.dart';
+import 'package:mathnew/user_interface/widgets/vlibras_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'sheldon_service.dart';
 import 'orientation_service.dart';
 
@@ -10,10 +11,10 @@ class MemoryTutorialController extends ChangeNotifier {
   bool get isTutorialActive => _currentStepIndex < _tutorialSteps.length;
   int get currentStepIndex => _currentStepIndex;
   int get totalSteps => _tutorialSteps.length;
-  
+
   String? activeCardTutorialType;
   final statusKey = GlobalKey();
-  final Map<String, GlobalKey> cardKeys = {}; 
+  final Map<String, GlobalKey> cardKeys = {};
   Rect? highlightRect;
   String guidanceText = '';
   Alignment guidanceAlignment = Alignment.center;
@@ -21,29 +22,45 @@ class MemoryTutorialController extends ChangeNotifier {
 
   late GeniusGameController _gameController;
   final OrientationService _orientationService = OrientationService();
-  
+  bool _shouldShowVLibrasIntro = false;
+
   MemoryTutorialController() {
-    final iconTypes = ["BaterPalma", "BaterPe", "BaterPeito", "BaterPerna", "Gritar", "Beijo"];
+    final iconTypes = [
+      "BaterPalma",
+      "BaterPe",
+      "BaterPeito",
+      "BaterPerna",
+      "Gritar",
+      "Beijo"
+    ];
     for (var type in iconTypes) {
       cardKeys[type] = GlobalKey();
     }
   }
 
-  void start(BuildContext context, GeniusGameController gameController) {
+  Future<void> start(
+      BuildContext context, GeniusGameController gameController) async {
     _gameController = gameController;
+    bool alreadyShownAnyGlobal =
+        await _orientationService.hasShownAnyTutorialGlobal();
+    _shouldShowVLibrasIntro = kIsWeb || !alreadyShownAnyGlobal;
+    if (_shouldShowVLibrasIntro && !kIsWeb) {
+      await _orientationService.markAnyTutorialAsShownGlobal();
+    }
+
     _buildTutorialSequence();
     nextStep();
   }
-  
+
   void _buildTutorialSequence() {
     _tutorialSteps = [
+      if (_shouldShowVLibrasIntro) _stepVLibrasIntro,
       _stepWelcome,
-      _stepNext,
       _stepStatusPanel,
       _stepTimerExplanation,
       _stepTimerSettings,
       _stepGameArea,
-      _stepGameLogic,    
+      _stepGameLogic,
       _stepPressStart,
     ];
   }
@@ -56,55 +73,53 @@ class MemoryTutorialController extends ChangeNotifier {
       _finishTutorial();
     }
   }
-  
+
   void skipTutorial(BuildContext context) {
     _finishTutorial();
   }
-  
-  void _stepWelcome() {
+
+  void _stepVLibrasIntro() {
     highlightRect = null;
     canTapHighlightedItem = false;
     activeCardTutorialType = null;
-    
-    guidanceText = 'Bem-vindo! Toque em "Começar" ou em "Pular Tutorial".';
+
+    guidanceText =
+        'Ative o VLibras no ícone à direita depois toque em "Começar" ou apenas em "Começar" para seguir sem a tradução.';
     guidanceAlignment = Alignment.center;
-    
+
     _announce(guidanceText);
     notifyListeners();
   }
 
-   void _stepNext() {
+  void _stepWelcome() {
     highlightRect = null;
-    canTapHighlightedItem = false;
-    activeCardTutorialType = null;
-    
-    guidanceText = 'Para seguir o tutorial, toque em "Próximo" ou arraste para o lado.';
+    final String btnLabel = _currentStepIndex == 0 ? 'Começar' : 'Próximo';
+    guidanceText = 'Bem-vindo! Toque em "$btnLabel" ou em "Pular Tutorial".';
     guidanceAlignment = Alignment.center;
-    
     _announce(guidanceText);
     notifyListeners();
   }
-  
+
   void _stepStatusPanel() {
     _calculateHighlight(statusKey);
     canTapHighlightedItem = false;
-    activeCardTutorialType = null; 
-    
+    activeCardTutorialType = null;
     guidanceText = 'O painel superior mostra instruções e o botão "Iniciar".';
     guidanceAlignment = Alignment.center;
-    
+
     _announce(guidanceText);
     notifyListeners();
   }
-  
+
   void _stepTimerExplanation() {
-    _calculateHighlight(statusKey); 
+    _calculateHighlight(statusKey);
     canTapHighlightedItem = false;
     activeCardTutorialType = null;
 
-    guidanceText = 'Um temporizador aparecerá com 15 segundos para o primeiro toque e 10 segundos para os demais.';
+    guidanceText =
+        'Um temporizador aparecerá com 15 segundos para o primeiro toque e 10 segundos para os demais.';
     guidanceAlignment = Alignment.center;
-    
+
     _announce(guidanceText);
     notifyListeners();
   }
@@ -114,9 +129,10 @@ class MemoryTutorialController extends ChangeNotifier {
     canTapHighlightedItem = false;
     activeCardTutorialType = null;
 
-    guidanceText = 'Você pode alterar o tempo no menu lateral, em "Configurar Tempo".';
+    guidanceText =
+        'Você pode alterar o tempo no menu lateral, em "Configurar Tempo".';
     guidanceAlignment = Alignment.center;
-    
+
     _announce(guidanceText);
     notifyListeners();
   }
@@ -128,7 +144,7 @@ class MemoryTutorialController extends ChangeNotifier {
 
     guidanceText = 'A área central contém os botões de sons.';
     guidanceAlignment = Alignment.center;
-    
+
     _announce(guidanceText);
     notifyListeners();
   }
@@ -138,9 +154,10 @@ class MemoryTutorialController extends ChangeNotifier {
     canTapHighlightedItem = false;
     activeCardTutorialType = null;
 
-    guidanceText = 'Memorize e repita a sequência de sons que o jogo reproduzir.';
+    guidanceText =
+        'Memorize e repita a sequência de sons que o jogo reproduzir.';
     guidanceAlignment = Alignment.center;
-    
+
     _announce(guidanceText);
     notifyListeners();
   }
@@ -150,33 +167,33 @@ class MemoryTutorialController extends ChangeNotifier {
   }
 
   void _stepPressStart() {
-    highlightRect = null; 
+    highlightRect = null;
     canTapHighlightedItem = false;
     activeCardTutorialType = null;
-    
-    guidanceText = 'Tutorial finalizado! Toque em "Finalizar" para jogar.';
+
+    guidanceText = 'Toque em "Finalizar Tutorial" para entrar no jogo.';
     guidanceAlignment = Alignment.center;
-    
+
     notifyListeners();
 
     Future.delayed(const Duration(milliseconds: 150), () {
       if (isTutorialActive && _currentStepIndex == _tutorialSteps.length - 1) {
-         _announce(guidanceText);
+        _announce(guidanceText);
       }
     });
   }
-  
+
   void _finishTutorial() {
     _currentStepIndex = _tutorialSteps.length;
     highlightRect = null;
     guidanceText = '';
-    activeCardTutorialType = null; 
+    activeCardTutorialType = null;
     _gameController.removeListener(_onGameStarted);
     _orientationService.markMemoryGameTutorialAsShown();
     _announce("Tutorial finalizado. Bom jogo!");
     notifyListeners();
   }
-  
+
   void _onGameStarted() {
     if (_gameController.gameState == GeniusGameState.showingSequence) {
       _finishTutorial();
@@ -186,29 +203,28 @@ class MemoryTutorialController extends ChangeNotifier {
   void _calculateHighlight(GlobalKey key) {
     Future.delayed(const Duration(milliseconds: 150), () {
       if (!isTutorialActive) return;
-      
+
       final renderBox = key.currentContext?.findRenderObject() as RenderBox?;
       if (renderBox != null && renderBox.hasSize) {
         final position = renderBox.localToGlobal(Offset.zero);
-        highlightRect = Rect.fromLTWH(
-          position.dx, position.dy,
-          renderBox.size.width, renderBox.size.height
-        );
+        highlightRect = Rect.fromLTWH(position.dx, position.dy,
+            renderBox.size.width, renderBox.size.height);
       } else {
         highlightRect = null;
       }
-      notifyListeners(); 
+      notifyListeners();
     });
   }
-  
+
   void _announce(String message) {
     bool isLastStep = _currentStepIndex >= _tutorialSteps.length - 1;
-    bool isWelcomeStep = _currentStepIndex == 0;
-    bool isNextStepInstruction = _currentStepIndex == 1;
+    bool isInitialStep = _currentStepIndex == 0;
+    bool isSecondaryStep = _currentStepIndex == 1;
 
     String messageToSpeak = message;
-    VLibrasWidget.buscarTraducao(message); 
-    if (isTutorialActive && !isLastStep && !isWelcomeStep && !isNextStepInstruction) {
+    VLibrasWidget.buscarTraducao(message);
+
+    if (isTutorialActive && !isLastStep && !isInitialStep && !isSecondaryStep) {
       messageToSpeak += ". Toque em próximo para continuar";
     }
 

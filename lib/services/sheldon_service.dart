@@ -146,7 +146,7 @@ class GeniusGameController extends ChangeNotifier {
     
     context.read<ScoreHistoryService>().addScoreEntry(_score, _score + 1);
 
-    _audioService.playAudio('assets/sounds/error.mp3');
+    _audioService.playAudio('assets/sounds/errado.mp3');
 
     final String announcement = "Fim de Jogo! Você alcançou o nível ${_score + 1} e sua pontuação foi ${_score}. Toque no botão Jogar Novamente para iniciar um novo jogo.";
   

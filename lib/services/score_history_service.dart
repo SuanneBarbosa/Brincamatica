@@ -59,4 +59,11 @@ class ScoreHistoryService extends ChangeNotifier {
     notifyListeners();
     debugPrint("Nova pontuação salva: ${newEntry.score} no nível ${newEntry.level}");
   }
+
+  Future<void> clearHistory() async {
+    _scores = [];
+    await _persistHistory();
+    notifyListeners();
+    debugPrint("Histórico de pontuação apagado.");
+  }
 }

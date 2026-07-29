@@ -48,7 +48,7 @@ class MemoryGameAboutScreen extends StatelessWidget {
             ),
             const Center(
               child: Text(
-                'Versão 1.0',
+                'Versão 2.0',
                 style: TextStyle(
                   fontSize: 16,
                   fontStyle: FontStyle.italic,

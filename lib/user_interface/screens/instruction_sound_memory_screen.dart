@@ -19,11 +19,11 @@ class SoundMemoryInstructionsScreen extends StatelessWidget {
             _buildInstructionItem(
               title: 'Objetivo do Jogo',
               description:
-                  'Seu objetivo é encontrar todos os pares de sons idênticos, fazendo com que eles desapareçam até que o tabuleiro esteja completamente limpo.',
+                  'Seu objetivo é encontrar todos os pares de sons idênticos, fazendo com que eles desapareçam até que o tabuleiro esteja completamente vazio.',
               semanticsDescription:
                   'Encontre todos os pares de sons para limpar o tabuleiro.',
             ),
-             _buildInstructionItem(
+            _buildInstructionItem(
               title: 'Níveis de Dificuldade',
               description:
                   'O jogo possui dois níveis: Fácil, com 12 cartas que formam 6 pares, e Difícil, com 20 cartas que formam 10 pares. No nível difícil, novos sons, como estalar a língua, são adicionados. Você pode alterar a dificuldade no Menu Lateral.',
@@ -37,7 +37,7 @@ class SoundMemoryInstructionsScreen extends StatelessWidget {
               semanticsDescription:
                   'Toque no botão Iniciar na barra superior para começar a partida e o cronômetro.',
             ),
-             _buildInstructionItem(
+            _buildInstructionItem(
               title: 'Cronômetro e Pares',
               description:
                   'Assim que o jogo começa, um cronômetro na barra superior marcará seu tempo. Ao lado, você pode acompanhar quantos pares já encontrou.',
@@ -54,16 +54,16 @@ class SoundMemoryInstructionsScreen extends StatelessWidget {
             _buildInstructionItem(
               title: 'Encontrando um Par (Acerto)',
               description:
-                  'Se as duas cartas viradas tiverem o mesmo som, um som de acerto tocará e o par desaparecerá da tela, limpando o tabuleiro.',
+                  'Se duas cartas tiverem o mesmo som, um alarme tocará e o par desaparecerá da tela.',
               semanticsDescription:
-                  'Se os sons forem iguais, um som de acerto toca e as cartas somem.',
+                  'Se as cartas forem iguais, um som de acerto toca e as cartas somem.',
             ),
             _buildInstructionItem(
               title: 'Se as Cartas Não Forem um Par (Erro)',
               description:
-                  'Se os sons forem diferentes, um som de erro tocará e, após um instante, as cartas voltarão a ficar viradas para baixo. Use os números para lembrar onde cada som está!',
+                  'Se as cartas forem diferentes, um alarme tocará e, após um instante, as cartas voltarão a ficar viradas para baixo. Use os números para lembrar onde cada som está!',
               semanticsDescription:
-                  'Se os sons forem diferentes, um som de erro toca e as cartas viram de volta para baixo.',
+                  'Se as cartas forem diferentes, um alarme toca e as cartas viram de volta para baixo.',
             ),
             _buildInstructionItem(
               title: 'Fim de Jogo',

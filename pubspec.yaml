@@ -1,7 +1,7 @@
-name: Mathnew
+name: mathnew
 description: "A new Flutter project."
 publish_to: 'none' 
-version: 1.5.1+2
+version: 1.6.1+2
 
 environment:
   sdk: ^3.5.3
@@ -40,6 +40,7 @@ flutter:
     - assets/images/characters/
     - assets/images/icons/
     - assets/images/buttons/
+    - assets/images/logo/
     - assets/images/personagem.png
     
     - assets/images/IFSP_Logo.png

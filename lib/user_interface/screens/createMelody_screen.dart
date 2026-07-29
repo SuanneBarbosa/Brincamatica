@@ -1,4 +1,4 @@
-import 'package:Mathnew/user_interface/widgets/app_drawer_header.dart';
+import 'package:mathnew/user_interface/widgets/app_drawer_header.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/character_service.dart';
@@ -14,13 +14,14 @@ import '../widgets/joystick_button.dart';
 import '../../services/playback_service.dart';
 import 'about_createMelody_screen.dart';
 
-
 class Mathicon extends StatefulWidget {
-  const Mathicon({super.key,
+  const Mathicon({
+    super.key,
     this.characterKey,
     this.actionMenuKey,
     this.playButtonKey,
-    this.menuButtonKey,});
+    this.menuButtonKey,
+  });
   final GlobalKey? characterKey;
   final GlobalKey? actionMenuKey;
   final GlobalKey? playButtonKey;
@@ -38,7 +39,6 @@ class _MathiconState extends State<Mathicon> {
   @override
   void initState() {
     super.initState();
-    
   }
 
   @override
@@ -160,7 +160,6 @@ class _MathiconState extends State<Mathicon> {
     }
   }
 
-
   void _limparTelaEPararPlayback() async {
     await context.read<PlaybackController>().stop();
     if (mounted) {
@@ -217,7 +216,7 @@ class _MathiconState extends State<Mathicon> {
               padding: EdgeInsets.zero,
               children: [
                 const AppDrawerHeader(),
-                 ListTile(
+                ListTile(
                   leading: const Icon(Icons.home_filled, color: Colors.blue),
                   title: Semantics(
                     label: 'Voltar ao Menu para escolher um jogo',
@@ -225,8 +224,8 @@ class _MathiconState extends State<Mathicon> {
                     child: const Text("Escolha o jogo"),
                   ),
                   onTap: () {
-                   context.read<PlaybackController>().stop();
-                    Navigator.pop(context); 
+                    context.read<PlaybackController>().stop();
+                    Navigator.pop(context);
                     Navigator.of(context).popUntil((route) => route.isFirst);
                   },
                 ),
@@ -444,7 +443,7 @@ class _MathiconState extends State<Mathicon> {
                       label: 'Abrir menu de navegação',
                       button: true,
                       child: IconButton(
-                         key: widget.menuButtonKey,
+                        key: widget.menuButtonKey,
                         icon: const Icon(Icons.menu, color: Colors.blue),
                         tooltip: "Abrir menu",
                         onPressed: () => Scaffold.of(context).openDrawer(),
@@ -677,7 +676,7 @@ class _MathiconState extends State<Mathicon> {
                 : 'Tocar a linha atual do personagem',
             button: true,
             child: ElevatedButton(
-              key: widget.playButtonKey, 
+              key: widget.playButtonKey,
               onPressed: onPressedAction,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blueAccent,
@@ -727,7 +726,7 @@ class _MathiconState extends State<Mathicon> {
       String buttonBasePath = 'assets/images/buttons/button_';
 
       return SingleChildScrollView(
-         key: widget.actionMenuKey,
+        key: widget.actionMenuKey,
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         child: Center(

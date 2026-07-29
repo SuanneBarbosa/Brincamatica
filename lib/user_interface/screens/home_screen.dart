@@ -1,6 +1,6 @@
-import 'package:Mathnew/services/sheldon_tutorial_service.dart';
-import 'package:Mathnew/user_interface/screens/combinesSound_screen.dart';
-import 'package:Mathnew/user_interface/screens/createMelody_tutorial_overlay.dart';
+import 'package:mathnew/services/sheldon_tutorial_service.dart';
+import 'package:mathnew/user_interface/screens/combinesSound_screen.dart';
+import 'package:mathnew/user_interface/screens/createMelody_tutorial_overlay.dart';
 import 'package:flutter/material.dart';
 import 'character_selection_screen.dart';
 import '../../services/orientation_service.dart';
@@ -57,9 +57,10 @@ class HomeScreen extends StatelessWidget {
         height: double.infinity,
         child: Center(
           child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal, 
+            scrollDirection: Axis.horizontal,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
               child: FocusTraversalGroup(
                 policy: OrderedTraversalPolicy(),
                 child: Row(
@@ -72,9 +73,10 @@ class HomeScreen extends StatelessWidget {
                         label: 'Criar Melodia',
                         icon: Icons.music_note,
                         semanticsLabel: 'Jogo Criar Melodia',
-                       onPressed: () async {
+                        onPressed: () async {
                           final orientationService = OrientationService();
-                          final bool tutorialShown = await orientationService.hasShownCreateMelodyTutorial();
+                          final bool tutorialShown = await orientationService
+                              .hasShownCreateMelodyTutorial();
                           if (context.mounted) {
                             Navigator.push(
                               context,
@@ -98,8 +100,8 @@ class HomeScreen extends StatelessWidget {
                         semanticsLabel: 'Jogo Sheldon',
                         onPressed: () async {
                           final orientationService = OrientationService();
-                          final bool tutorialShown =
-                              await orientationService.hasShownMemoryGameTutorial();
+                          final bool tutorialShown = await orientationService
+                              .hasShownMemoryGameTutorial();
 
                           if (context.mounted) {
                             Navigator.push(
@@ -108,7 +110,8 @@ class HomeScreen extends StatelessWidget {
                                 builder: (context) => tutorialShown
                                     ? const MemoryGameScreen()
                                     : ChangeNotifierProvider(
-                                        create: (_) => MemoryTutorialController(),
+                                        create: (_) =>
+                                            MemoryTutorialController(),
                                         child: const TutorialOverlay(),
                                       ),
                               ),
@@ -127,9 +130,9 @@ class HomeScreen extends StatelessWidget {
                         semanticsLabel: 'Jogo Combina Som',
                         onPressed: () async {
                           final orientationService = OrientationService();
-                          final bool tutorialShown =
-                              await orientationService.hasShownGeneratorGameTutorial();
-                          
+                          final bool tutorialShown = await orientationService
+                              .hasShownGeneratorGameTutorial();
+
                           if (context.mounted) {
                             Navigator.push(
                               context,
@@ -143,7 +146,7 @@ class HomeScreen extends StatelessWidget {
                         },
                       ),
                     ),
-                    const SizedBox(width: 20), 
+                    const SizedBox(width: 20),
                     FocusTraversalOrder(
                       order: const NumericFocusOrder(4),
                       child: _buildGameCard(
@@ -153,9 +156,9 @@ class HomeScreen extends StatelessWidget {
                         semanticsLabel: 'Jogo da Memória',
                         onPressed: () async {
                           final orientationService = OrientationService();
-                          final bool tutorialShown =
-                              await orientationService.hasShownSoundMemoryTutorial();
-                          
+                          final bool tutorialShown = await orientationService
+                              .hasShownSoundMemoryTutorial();
+
                           if (context.mounted) {
                             Navigator.push(
                               context,
@@ -163,8 +166,10 @@ class HomeScreen extends StatelessWidget {
                                 builder: (context) => tutorialShown
                                     ? const SoundMemoryScreen()
                                     : ChangeNotifierProvider(
-                                        create: (_) => SoundMemoryTutorialController(),
-                                        child: const SoundMemoryTutorialOverlay(),
+                                        create: (_) =>
+                                            SoundMemoryTutorialController(),
+                                        child:
+                                            const SoundMemoryTutorialOverlay(),
                                       ),
                               ),
                             );
@@ -181,8 +186,7 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-  
- 
+
   Widget _buildGameCard({
     required BuildContext context,
     required String label,

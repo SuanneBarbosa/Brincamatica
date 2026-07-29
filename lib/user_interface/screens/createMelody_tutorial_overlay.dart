@@ -1,4 +1,4 @@
-import 'package:Mathnew/user_interface/widgets/vlibras_widget.dart';
+import 'package:mathnew/user_interface/widgets/vlibras_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/character_service.dart';
@@ -18,23 +18,18 @@ class CreateMelodyTutorialOverlay extends StatefulWidget {
 
 class _CreateMelodyTutorialOverlayState
     extends State<CreateMelodyTutorialOverlay> {
-  
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final tutorialController = context.read<CreateMelodyTutorialController>();
-      
+
       final charController = context.read<CharacterController>();
       final iconController = context.read<IconController>();
       final playbackController = context.read<PlaybackController>();
 
       tutorialController.start(
-        context, 
-        charController, 
-        iconController, 
-        playbackController
-      );
+          context, charController, iconController, playbackController);
     });
   }
 
@@ -64,28 +59,30 @@ class _CreateMelodyTutorialOverlayState
         ),
         if (tutorial.isTutorialActive) _buildTutorialLayer(tutorial),
         if (tutorial.isTutorialActive)
-         const Positioned(
-          bottom: 0, 
-          right: 0,
-           child: ExcludeSemantics(
-          child: VLibrasWidget(),
-           ),
-        ),
+          const Positioned(
+            bottom: 0,
+            right: 0,
+            child: ExcludeSemantics(
+              child: VLibrasWidget(),
+            ),
+          ),
       ],
     );
   }
 
   Widget _buildTutorialLayer(CreateMelodyTutorialController tutorial) {
-    final bool isLastStep = tutorial.currentStepIndex == tutorial.totalSteps - 1;
+    final bool isLastStep =
+        tutorial.currentStepIndex == tutorial.totalSteps - 1;
     final bool isFirstStep = tutorial.currentStepIndex == 0;
 
     return GestureDetector(
       onHorizontalDragEnd: (details) {
-        bool isSwipeNext = details.primaryVelocity != null && details.primaryVelocity! < 0;
-        
-                if (isSwipeNext && !isFirstStep && !isLastStep) {
-                  tutorial.nextStep();
-                }
+        bool isSwipeNext =
+            details.primaryVelocity != null && details.primaryVelocity! < 0;
+
+        if (isSwipeNext && !isFirstStep && !isLastStep) {
+          tutorial.nextStep();
+        }
       },
       child: Semantics(
         label: 'Camada do tutorial',
@@ -94,7 +91,7 @@ class _CreateMelodyTutorialOverlayState
         child: Stack(
           children: [
             GestureDetector(
-              onTap: () {}, 
+              onTap: () {},
               child: ClipPath(
                 clipper: HoleClipper(tutorial.highlightRect),
                 child: Container(
@@ -102,9 +99,7 @@ class _CreateMelodyTutorialOverlayState
                 ),
               ),
             ),
-            
             _buildGuidanceBox(tutorial),
-            
             if (!isLastStep) _buildNextButton(tutorial),
             if (!isLastStep) _buildSkipButton(tutorial),
             if (isLastStep) _buildFinishButton(tutorial),
@@ -114,7 +109,6 @@ class _CreateMelodyTutorialOverlayState
     );
   }
 
-
   Widget _buildGuidanceBox(CreateMelodyTutorialController tutorial) {
     if (tutorial.guidanceText.isEmpty) return const SizedBox.shrink();
 
@@ -122,7 +116,8 @@ class _CreateMelodyTutorialOverlayState
     final maxBoxWidth = screenWidth * 0.70;
     final double fontSize = (screenWidth * 0.025).clamp(16.0, 32.0);
 
-    if (tutorial.guidanceAlignment == Alignment.center || tutorial.highlightRect == null) {
+    if (tutorial.guidanceAlignment == Alignment.center ||
+        tutorial.highlightRect == null) {
       return Align(
         alignment: Alignment.centerLeft,
         child: Container(
@@ -132,16 +127,20 @@ class _CreateMelodyTutorialOverlayState
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(15),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, spreadRadius: 2)],
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  spreadRadius: 2)
+            ],
           ),
           child: Text(
             tutorial.guidanceText,
             style: TextStyle(
-              fontSize: fontSize, 
-              color: Colors.blueAccent, 
-              fontWeight: FontWeight.bold, 
-              decoration: TextDecoration.none
-            ),
+                fontSize: fontSize,
+                color: Colors.blueAccent,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.none),
             textAlign: TextAlign.center,
           ),
         ),
@@ -165,16 +164,17 @@ class _CreateMelodyTutorialOverlayState
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)],
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)
+          ],
         ),
         child: Text(
           tutorial.guidanceText,
           style: TextStyle(
-            fontSize: fontSize, 
-            color: Colors.blueAccent, 
-            fontWeight: FontWeight.bold, 
-            decoration: TextDecoration.none
-          ),
+              fontSize: fontSize,
+              color: Colors.blueAccent,
+              fontWeight: FontWeight.bold,
+              decoration: TextDecoration.none),
           textAlign: TextAlign.center,
         ),
       ),
@@ -190,11 +190,12 @@ class _CreateMelodyTutorialOverlayState
 
     return Positioned(
       bottom: 20,
-      right: (screenWidth * 0.25) + 20, 
+      right: (screenWidth * 0.25) + 20,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
-          textStyle: TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
+          textStyle:
+              TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
         ),
         onPressed: tutorial.nextStep,
         child: Text(isWelcomeStep ? 'Começar' : 'Próximo'),
@@ -210,13 +211,14 @@ class _CreateMelodyTutorialOverlayState
 
     return Positioned(
       bottom: 20,
-       right: (screenWidth * 0.25) + 20, 
+      right: (screenWidth * 0.25) + 20,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blueAccent,
           foregroundColor: Colors.white,
           padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
-          textStyle: TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
+          textStyle:
+              TextStyle(fontSize: btnFontSize, fontWeight: FontWeight.bold),
         ),
         onPressed: tutorial.skipTutorial,
         child: const Text('Finalizar Tutorial'),
@@ -236,9 +238,16 @@ class _CreateMelodyTutorialOverlayState
         child: Text(
           'Pular Tutorial',
           style: TextStyle(
-              color: Colors.blueAccent, 
-              fontSize: fontSize, 
-              fontWeight: FontWeight.bold
+            color: Colors.white,
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            shadows: const [
+              Shadow(
+                offset: Offset(1.5, 1.5),
+                blurRadius: 9,
+                color: Colors.black45,
+              ),
+            ],
           ),
         ),
       ),

@@ -8,9 +8,9 @@ class ThankYouScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Agradecimentos"),
-        backgroundColor: Colors.blue, 
-         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20), 
-        iconTheme: const IconThemeData(color: Colors.white), 
+        backgroundColor: Colors.blue,
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -22,7 +22,7 @@ class ThankYouScreen extends StatelessWidget {
             ),
             color: Colors.blueAccent,
             child: const SizedBox(
-              height: 300,
+              height: 200,
               child: Scrollbar(
                 thumbVisibility: true,
                 child: SingleChildScrollView(
@@ -31,7 +31,7 @@ class ThankYouScreen extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      
+                      SizedBox(height: 20),
                       Text(
                         "Versão Original",
                         textAlign: TextAlign.center,
@@ -43,27 +43,9 @@ class ThankYouScreen extends StatelessWidget {
                       ),
                       SizedBox(height: 10),
                       Text(
-                        "Celia Hoyles\nKauan Espósito da Conceição\nLulu Healy\nRichard Noss",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                      Text(
-                        "Versão Atualizada (2025)",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
                         "Luis Fernando Pacheco Pereira\n"
                         "Solange Hassan Ahmad Ali Fernandes\n"
+                        "Lulu Healy\n"
                         "Suanne Almeida Barbosa",
                         textAlign: TextAlign.center,
                         style: TextStyle(
